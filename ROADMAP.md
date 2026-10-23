@@ -97,6 +97,33 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-041** UI integration tests against the real FFI library
   priority: medium · status: planned · added: 2026-10-23
   Tests load agent_ffi.dll, assert diagnostics, and verify every returned string is freed.
+- [ ] **R-045** Triage newly disclosed Windows 10 CVEs after end of support
+  priority: high · status: planned · added: 2026-10-23
+  Monthly intake from MSRC, CISA KEV, and vendor advisories; classify by exploitation status, severity, and 22H2 applicability; feed the security patch catalog and the experimental patch work.
+- [ ] **R-046** CVE-2026-96951: Windows Shell Mark of the Web bypass, actively exploited
+  priority: critical · status: planned · added: 2026-10-23
+  Command injection in Windows Shell rated 8.8; added to CISA KEV on 2026-10-13 as actively exploited; weaponized through malicious LNK files; Windows 10 22H2 fixed in build 19045.7807. The community fix must restore MotW handling and prove the bypass no longer works in a VM.
+- [ ] **R-047** CVE-2026-85880: actively exploited Windows heap overflow
+  priority: critical · status: planned · added: 2026-10-23
+  Heap-based buffer overflow (CWE-122) rated 7.8 disclosed 2026-09; affects Windows 10 1607 through 22H2; 22H2 fixed in build 19045.7725. Identify the exact component from MSRC guidance and deliver a bounded mitigation with VM evidence.
+- [ ] **R-048** CVE-2026-100219 and CVE-2026-105016: Microsoft QUIC remote code execution
+  priority: critical · status: planned · added: 2026-10-23
+  Two critical RCEs in msquic rated 9.8 disclosed 2026-10: use-after-free and heap-based buffer overflow; no authentication or user interaction required. Confirm Windows 10 22H2 affected builds from MSRC before planning any work.
+- [ ] **R-049** October 2026 client decoder RCE batch
+  priority: high · status: planned · added: 2026-10-23
+  Critical RCEs disclosed 2026-10-13: CVE-2026-102225 (Text Shaping 8.8), CVE-2026-96943 and CVE-2026-96202 (Raw Image Extension 8.8), CVE-2026-100220 (Media Video Decoder 8.8), CVE-2026-83934 (GDI+ 8.8), CVE-2026-108457 (Windows PDF 8.1), with CVE-2026-88073 (Graphics Kernel elevation of privilege 8.8) and CVE-2026-70187 (Remote Desktop Services RCE 8.1). Confirm 22H2 affected builds and order by real exposure.
+- [ ] **R-050** CVE-2026-100202: Message Queuing remote code execution
+  priority: high · status: planned · added: 2026-10-23
+  Queue Manager RCE rated 9.8 disclosed 2026-10. MSMQ is an optional client component, so document real-world exposure and confirm 22H2 applicability first.
+- [ ] **R-051** CVE-2026-40415: TCP/IP use-after-free remote code execution
+  priority: high · status: planned · added: 2026-10-23
+  Use-after-free in tcpip.sys published 2026-05-12 enabling remote kernel code execution with high attack complexity. Confirm which Windows 10 builds Microsoft fixed and whether unpatched 22H2 systems remain affected.
+- [ ] **R-052** CVE-2026-20805 and CVE-2026-20816: DWM disclosure and Installer elevation from early 2026
+  priority: medium · status: planned · added: 2026-10-23
+  CVE-2026-20805 (Desktop Window Manager information disclosure) was reported exploited in the wild in 2026-01; CVE-2026-20816 (Windows Installer elevation, 7.8, TOCTOU race). Sources are community triage rather than CISA KEV, so verify exploitation status and applicability before starting.
+- [ ] **R-053** Suppress Microsoft end-of-support migration prompts
+  priority: medium · status: planned · added: 2026-10-23
+  Hide the one-per-period full-screen migration notice, the taskbar migration warning, and related prompts Microsoft pushes on Windows 10 after the support end; keep the agent's own diagnostics as the single status surface.
 ## Deferred
 
 - [ ] **R-034** Windows 10 21H2 and LTSC 2019 support

@@ -3,7 +3,7 @@ import "package:flutter_localizations/flutter_localizations.dart";
 
 import "core/ffi/agent_client.dart";
 import "core/i18n/app_localizations.dart";
-import "modules/diagnostics/diagnostics_screen.dart";
+import "core/navigation/app_shell.dart";
 
 void main() {
     runApp(
@@ -38,7 +38,7 @@ class LongLive10App extends StatelessWidget {
                 GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
-            home: DiagnosticsScreen(client: client),
+            home: AppShell(client: client),
         );
     }
 }

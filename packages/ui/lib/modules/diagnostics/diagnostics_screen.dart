@@ -36,29 +36,26 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     Widget build(BuildContext context) {
         final strings = AppLocalizations.of(context).strings;
 
-        return Scaffold(
-            appBar: AppBar(title: Text(strings.common.appTitle)),
-            body: FutureBuilder<Diagnostics>(
-                future: _diagnostics,
-                builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                        return _LoadingState(strings: strings.diagnostics);
-                    }
+        return FutureBuilder<Diagnostics>(
+            future: _diagnostics,
+            builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                    return _LoadingState(strings: strings.diagnostics);
+                }
 
-                    if (snapshot.hasError) {
-                        return _ErrorState(
-                            strings: strings.diagnostics,
-                            onRetry: _reload,
-                        );
-                    }
-
-                    return _DiagnosticsView(
-                        diagnostics: snapshot.data!,
+                if (snapshot.hasError) {
+                    return _ErrorState(
                         strings: strings.diagnostics,
-                        onRefresh: _reload,
+                        onRetry: _reload,
                     );
-                },
-            ),
+                }
+
+                return _DiagnosticsView(
+                    diagnostics: snapshot.data!,
+                    strings: strings.diagnostics,
+                    onRefresh: _reload,
+                );
+            },
         );
     }
 }
