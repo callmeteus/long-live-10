@@ -27,6 +27,15 @@ A manifest travels as a signed envelope:
         "published_at": 1800000000,
         "expires_at": 1800086400,
         "minimum_version": "1.0.0",
+        "notes": [
+            "Adds the status screen."
+        ],
+        "limitations": [
+            "Validated on Windows 10 22H2 x64 only."
+        ],
+        "rollback_steps": [
+            "Reinstall the previous release from the download archive."
+        ],
         "artifacts": [
             {
                 "id": "installer",

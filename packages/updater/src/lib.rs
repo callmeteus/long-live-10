@@ -106,6 +106,15 @@ pub struct ReleaseManifest {
     pub expires_at: u64,
     /// Oldest client version allowed to install this release.
     pub minimum_version: Option<String>,
+    /// User-facing release notes.
+    #[serde(default)]
+    pub notes: Vec<String>,
+    /// Known limitations of the release.
+    #[serde(default)]
+    pub limitations: Vec<String>,
+    /// Steps the user must follow to return to the previous version.
+    #[serde(default)]
+    pub rollback_steps: Vec<String>,
     /// Artifacts included in the release.
     pub artifacts: Vec<ReleaseArtifact>,
 }

@@ -5,3 +5,17 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Packaging, release manifests, and pre-release validation"
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+catalog-schema = { path = "../catalog-schema" }
+updater = { path = "../updater" }
+base64 = "0.22"
+ed25519-dalek = "2.1"
+semver = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"

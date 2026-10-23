@@ -29,6 +29,9 @@ fn manifest(version: &str) -> ReleaseManifest {
         published_at: NOW - 60,
         expires_at: NOW + 86_400,
         minimum_version: None,
+        notes: vec!["Test release.".to_string()],
+        limitations: Vec::new(),
+        rollback_steps: vec!["Reinstall the previous version.".to_string()],
         artifacts: vec![ReleaseArtifact {
             id: "artifact-1".to_string(),
             file_name: "long-live-10.msi".to_string(),
