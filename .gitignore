@@ -1,0 +1,7 @@
+# Build output
+/target/
+/node_modules/
+
+# Stillmark
+.stillmark/plans/
+.stillmark/learnings/design/

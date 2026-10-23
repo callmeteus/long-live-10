@@ -1,0 +1,27 @@
+﻿[workspace]
+members = [
+    "packages/agent",
+    "packages/patch-core",
+    "packages/updater",
+    "packages/catalog-schema",
+    "packages/compatibility-engine",
+    "packages/vm-harness",
+    "packages/release-tools",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Long Live 10 Community"]
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.0", features = ["derive"] }

@@ -1,0 +1,12 @@
+﻿[package]
+name = "catalog-schema"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Versioned schemas and contracts for Long Live 10"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
