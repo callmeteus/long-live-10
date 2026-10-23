@@ -56,6 +56,25 @@ fn accepts_a_valid_signed_manifest() {
 }
 
 #[test]
+fn accepts_a_manifest_on_the_expected_channel() {
+    let signed = signed("1.1.0");
+
+    signed
+        .verify_with_channel(&keyring(), NOW, "1.0.0", Some(ReleaseChannel::Stable))
+        .expect("manifest is on the expected channel");
+}
+
+#[test]
+fn rejects_a_manifest_from_another_channel() {
+    let signed = signed("1.1.0");
+
+    assert!(matches!(
+        signed.verify_with_channel(&keyring(), NOW, "1.0.0", Some(ReleaseChannel::Beta)),
+        Err(ManifestError::InvalidChannel { .. })
+    ));
+}
+
+#[test]
 fn rejects_an_unsigned_manifest() {
     let mut signed = signed("1.1.0");
     signed.signature = None;
