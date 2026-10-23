@@ -73,7 +73,7 @@ flutter build windows --release
 
 The release build installs `agent_ffi.dll` next to `long_live_10.exe`.
 
-Setup details live in [docs/development/](docs/development/).
+Setup details live in [docs/development/](docs/development/). The Hyper-V test image is documented in [docs/vm/windows-10-22h2-base-image.md](docs/vm/windows-10-22h2-base-image.md).
 
 ## Planning
 

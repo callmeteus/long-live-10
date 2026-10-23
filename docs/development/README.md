@@ -61,6 +61,10 @@ cargo test -p agent -p agent-ffi
 
 The DLL is written to `target/release/agent_ffi.dll`.
 
+## VM base image
+
+Hyper-V tests need a prepared Windows 10 22H2 base image with a `baseline` checkpoint, no network adapter, and a DPAPI credential file for PowerShell Direct. Follow [Windows 10 22H2 base image](../vm/windows-10-22h2-base-image.md) before running `cargo test -p vm-harness --test smoke_test -- --ignored`.
+
 ## Safety guidelines
 
 - Never test destructive operations on the host.
