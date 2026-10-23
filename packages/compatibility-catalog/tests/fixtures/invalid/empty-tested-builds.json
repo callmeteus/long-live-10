@@ -1,0 +1,25 @@
+{
+    "id": "software-empty-builds",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "Software without tested builds",
+    "vendor": "Example Vendor",
+    "description": "Software fixture without tested builds.",
+    "tested_builds": [],
+    "architectures": [
+        "x64"
+    ],
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "https://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

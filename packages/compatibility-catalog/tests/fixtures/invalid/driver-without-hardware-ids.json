@@ -1,0 +1,28 @@
+{
+    "id": "driver-without-hardware",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "driver",
+    "name": "Driver without hardware",
+    "vendor": "Example Vendor",
+    "description": "Driver fixture without hardware identifiers.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "driver_version": "1.0.0.0",
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "https://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

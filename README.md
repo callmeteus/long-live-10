@@ -4,7 +4,7 @@ Community-driven project to extend Windows 10 support after conventional support
 
 ## Status
 
-Phase 1: building the Hyper-V test harness. The Flutter interface shell and the diagnostics screen are implemented. See [ROADMAP.md](ROADMAP.md) for planned work and `.stillmark/plans/` for the private execution plan.
+Phase 1: the Hyper-V provider and base image guide are in place, with real VM validation pending a prepared image. Phase 2: versioned catalog contracts, fixtures, and validators are implemented. The Flutter interface shell and the diagnostics screen are implemented. See [ROADMAP.md](ROADMAP.md) for planned work and `.stillmark/plans/` for the private execution plan.
 
 ## Goals
 
@@ -48,7 +48,7 @@ npm run build      # cargo build
 npm run test       # cargo test
 npm run lint       # cargo clippy
 npm run format     # cargo fmt
-npm run validate:catalog  # validate JSON under catalogs/
+npm run validate:catalog  # validate patch and compatibility catalogs
 ```
 
 Run one package only:

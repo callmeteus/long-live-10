@@ -1,0 +1,30 @@
+{
+    "id": "driver-without-version",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "driver",
+    "name": "Driver without version",
+    "vendor": "Example Vendor",
+    "description": "Driver fixture without a driver version.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "hardware_ids": [
+        "PCI\\VEN_1234&DEV_5678"
+    ],
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "https://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

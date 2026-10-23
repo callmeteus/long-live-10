@@ -1,0 +1,20 @@
+{
+    "id": "software-without-sources",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "Software without sources",
+    "vendor": "Example Vendor",
+    "description": "Software fixture without external evidence.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "sources": [],
+    "status": "experimental"
+}

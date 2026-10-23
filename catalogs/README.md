@@ -29,6 +29,8 @@ npm run validate:catalog -- catalogs/target-builds
 
 The command exits with a non-zero status when any file is malformed or fails semantic validation. Every contract carries a schema version and is validated through `catalog-schema`.
 
+Compatibility entries for devices, drivers, and software live in [`packages/compatibility-catalog/entries/`](../packages/compatibility-catalog/entries/) and are validated by the same root command through the compatibility validator.
+
 ## Rules
 
 - Do not commit secrets, private download URLs, or license keys.

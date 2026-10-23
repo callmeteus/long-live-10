@@ -1,0 +1,27 @@
+{
+    "id": "software-unsupported-version",
+    "schema_version": {
+        "major": 2,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "Software with an unsupported schema version",
+    "vendor": "Example Vendor",
+    "description": "Fixture with a newer major schema generation.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "https://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

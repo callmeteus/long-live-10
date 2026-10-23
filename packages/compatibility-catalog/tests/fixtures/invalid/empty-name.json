@@ -1,0 +1,27 @@
+{
+    "id": "software-empty-name",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "   ",
+    "vendor": "Example Vendor",
+    "description": "Fixture with a blank display name.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "https://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

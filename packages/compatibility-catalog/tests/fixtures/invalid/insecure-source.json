@@ -1,0 +1,27 @@
+{
+    "id": "software-insecure-source",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "Software with an insecure source",
+    "vendor": "Example Vendor",
+    "description": "Software fixture with an HTTP source.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "http://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

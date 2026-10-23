@@ -5,3 +5,10 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Versioned compatibility catalog data and fixtures"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+catalog-schema = { path = "../catalog-schema" }

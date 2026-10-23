@@ -1,0 +1,36 @@
+{
+    "id": "software-visual-cpp-redistributable-2015-2022",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "Microsoft Visual C++ Redistributable 2015-2022",
+    "vendor": "Microsoft",
+    "description": "Runtime libraries required by native applications built with Visual Studio 2015 through 2022.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "hardware_ids": [],
+    "driver_version": null,
+    "version": "14.x",
+    "dependencies": [],
+    "known_issues": [],
+    "limitations": [
+        "Applications may bundle their own runtime and ignore the system package.",
+        "The entry is catalogued but has not passed the VM validation tier."
+    ],
+    "sources": [
+        {
+            "title": "Latest supported Visual C++ Redistributable downloads",
+            "url": "https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist",
+            "publisher": "Microsoft",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

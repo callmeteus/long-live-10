@@ -1,0 +1,27 @@
+{
+    "id": "software-invalid-architecture",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "Software with an unsupported architecture",
+    "vendor": "Example Vendor",
+    "description": "Fixture with an architecture outside the contract.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "mips"
+    ],
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "https://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}

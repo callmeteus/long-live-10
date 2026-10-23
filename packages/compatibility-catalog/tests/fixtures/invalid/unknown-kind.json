@@ -1,0 +1,27 @@
+{
+    "id": "software-unknown-kind",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "firmware",
+    "name": "Unknown compatibility kind",
+    "vendor": "Example Vendor",
+    "description": "Fixture with an unknown kind value.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "sources": [
+        {
+            "title": "Example source",
+            "url": "https://example.invalid/source",
+            "publisher": "Example Vendor",
+            "retrieved_at": "2026-10-23"
+        }
+    ],
+    "status": "experimental"
+}
