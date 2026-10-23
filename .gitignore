@@ -2,6 +2,11 @@
 /target/
 /node_modules/
 
+# Flutter
+/packages/ui/.dart_tool/
+/packages/ui/build/
+/packages/ui/windows/flutter/ephemeral/
+
 # Stillmark
 .stillmark/plans/
 .stillmark/learnings/design/

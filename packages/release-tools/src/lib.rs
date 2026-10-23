@@ -1,7 +1,3 @@
-﻿#[cfg(test)]
-mod tests {
-    #[test]
-    fn basic() {
-        assert!(true);
-    }
-}
+﻿//! Packaging, release manifests, and pre-release validation.
+
+// Release generation starts once the updater manifest format is defined.

@@ -4,4 +4,4 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "compatibility-catalog package"
+description = "Versioned compatibility catalog data and fixtures"

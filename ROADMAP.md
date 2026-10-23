@@ -91,6 +91,15 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-029** Public documentation for catalogs and test results
   priority: low · status: planned · added: 2026-10-23
   Publish catalog entries, provenance, and test outcomes for users and contributors.
+- [ ] **R-039** Flutter desktop app shell with diagnostics and status
+  priority: high · status: planned · added: 2026-10-23
+  Windows-first Flutter app that loads the Rust library and shows diagnostics, update status, and catalog state.
+- [ ] **R-040** JSON contract between the Flutter UI and the Rust core
+  priority: high · status: planned · added: 2026-10-23
+  Versioned DTOs and fixtures; all data crosses the FFI boundary as UTF-8 JSON, never as Rust struct layout.
+- [ ] **R-041** UI integration tests against the real FFI library
+  priority: medium · status: planned · added: 2026-10-23
+  Tests load agent_ffi.dll, assert diagnostics, and verify every returned string is freed.
 ## Deferred
 
 - [ ] **R-034** Windows 10 21H2 and LTSC 2019 support
@@ -117,3 +126,12 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-033** Establish initial planning documents
   priority: medium · status: done · done: 2026-10-23
   Roadmap, task plan, progress, and findings files created and kept current.
+- [x] **R-043** Install the Flutter SDK and scaffold the desktop app
+  priority: medium · status: done · done: 2026-10-23
+  Flutter 3.47.7 stable installed, Windows desktop enabled, app scaffolded in packages/ui.
+- [x] **R-042** Documented Flutter and Visual Studio toolchain setup
+  priority: medium · status: done · added: 2026-10-23 · done: 2026-10-23
+  Exact versions, flutter doctor checks, and build steps for contributors on Windows.
+- [x] **R-044** Windows runner builds and launches with the Rust library bundled
+  priority: medium · status: done · done: 2026-10-23
+  Flutter release build verified; agent_ffi.dll is installed next to the executable and the window opens centered.

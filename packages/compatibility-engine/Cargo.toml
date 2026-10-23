@@ -4,4 +4,4 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "compatibility-engine package"
+description = "Requirement resolution for devices, drivers, and software"

@@ -1,10 +1,12 @@
 ﻿[workspace]
 members = [
     "packages/agent",
+    "packages/agent-ffi",
     "packages/patch-core",
     "packages/updater",
     "packages/catalog-schema",
     "packages/compatibility-engine",
+    "packages/compatibility-catalog",
     "packages/vm-harness",
     "packages/release-tools",
 ]

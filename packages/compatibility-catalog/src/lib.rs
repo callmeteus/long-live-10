@@ -1,7 +1,3 @@
-﻿#[cfg(test)]
-mod tests {
-    #[test]
-    fn basic() {
-        assert!(true);
-    }
-}
+﻿//! Versioned compatibility catalog data and fixtures.
+
+// Catalog entries are loaded here once the schema package exposes fixtures.

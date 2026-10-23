@@ -4,4 +4,4 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "updater package"
+description = "Release queries, manifest verification, downloads, and self-update"

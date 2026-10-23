@@ -32,11 +32,3 @@ impl Default for PatchEngine {
         Self::new()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn basic() {
-        assert!(true);
-    }
-}

@@ -1,7 +1,3 @@
-﻿#[cfg(test)]
-mod tests {
-    #[test]
-    fn basic() {
-        assert!(true);
-    }
-}
+﻿//! Release queries, manifest verification, downloads, and self-update.
+
+// Manifest verification is implemented after the catalog contract is stable.
