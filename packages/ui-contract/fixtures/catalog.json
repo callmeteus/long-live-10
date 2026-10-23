@@ -1,0 +1,120 @@
+{
+    "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "target_builds": [
+        {
+            "id": "win10-22h2-x64",
+            "schema_version": {
+                "major": 1,
+                "minor": 0,
+                "patch": 0
+            },
+            "product_name": "Windows 10 Pro",
+            "display_version": "22H2",
+            "os_version": "10.0",
+            "build": 19045,
+            "ubr": 6466,
+            "architecture": "x64"
+        }
+    ],
+    "patches": [
+        {
+            "id": "kb-test-0001",
+            "schema_version": {
+                "major": 1,
+                "minor": 0,
+                "patch": 0
+            },
+            "cves": [
+                "CVE-2026-0001"
+            ],
+            "component": "kernel",
+            "builds": [
+                "19045.6466"
+            ],
+            "architectures": [
+                "x64"
+            ],
+            "title": "Fixture patch",
+            "description": "Synthetic patch used by UI contract tests.",
+            "status": "experimental"
+        }
+    ],
+    "compatibility": [
+        {
+            "id": "software-dotnet-framework-4-8-1",
+            "schema_version": {
+                "major": 1,
+                "minor": 0,
+                "patch": 0
+            },
+            "kind": "software",
+            "name": ".NET Framework 4.8.1",
+            "vendor": "Microsoft",
+            "description": "Runtime used by desktop applications that target .NET Framework 4.8.1.",
+            "tested_builds": [
+                "win10-22h2-x64"
+            ],
+            "architectures": [
+                "x64"
+            ],
+            "hardware_ids": [],
+            "driver_version": null,
+            "version": "4.8.1",
+            "dependencies": [],
+            "known_issues": [],
+            "limitations": [
+                "Installation may require a restart."
+            ],
+            "sources": [
+                {
+                    "title": "Download .NET Framework 4.8.1",
+                    "url": "https://dotnet.microsoft.com/en-us/download/dotnet-framework/net481",
+                    "publisher": "Microsoft",
+                    "retrieved_at": "2026-10-23"
+                }
+            ],
+            "status": "experimental"
+        },
+        {
+            "id": "driver-example-network",
+            "schema_version": {
+                "major": 1,
+                "minor": 0,
+                "patch": 0
+            },
+            "kind": "driver",
+            "name": "Example network driver",
+            "vendor": "Example Vendor",
+            "description": "Synthetic driver used by compatibility and UI contract tests.",
+            "tested_builds": [
+                "win10-22h2-x64"
+            ],
+            "architectures": [
+                "x64"
+            ],
+            "hardware_ids": [
+                "PCI\\VEN_1234&DEV_5678"
+            ],
+            "driver_version": "1.0.0.0",
+            "version": null,
+            "dependencies": [],
+            "known_issues": [],
+            "limitations": [
+                "Synthetic fixture only."
+            ],
+            "sources": [
+                {
+                    "title": "Example driver support page",
+                    "url": "https://example.com/support/network-driver",
+                    "publisher": "Example Vendor",
+                    "retrieved_at": "2026-10-23"
+                }
+            ],
+            "status": "experimental"
+        }
+    ]
+}

@@ -18,6 +18,7 @@ void main() {
 
             final diagnostics = await client.readDiagnostics();
 
+            expect(diagnostics.contractVersion.major, 1);
             expect(diagnostics.agentVersion, isNotEmpty);
             expect(diagnostics.os, "windows");
             expect(diagnostics.architecture, isNotEmpty);

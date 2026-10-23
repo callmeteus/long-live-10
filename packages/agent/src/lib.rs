@@ -4,56 +4,16 @@
 //! Flutter app reaches this crate through `agent-ffi`, which serializes the
 //! same types to UTF-8 JSON.
 
-use serde::{Deserialize, Serialize};
-
-/// Machine-readable diagnostics returned to the CLI, the UI, and the FFI layer.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Diagnostics {
-    /// Version of the running agent build.
-    pub agent_version: String,
-
-    /// Operating system identifier reported by the Rust standard library.
-    pub os: String,
-
-    /// CPU architecture identifier reported by the Rust standard library.
-    pub architecture: String,
-
-    /// Windows version data, present only when running on Windows.
-    pub windows: Option<WindowsVersion>,
-}
-
-/// Windows version data read from
-/// `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct WindowsVersion {
-    /// Marketing product name, for example `Windows 10 Pro`.
-    pub product_name: String,
-
-    /// Feature update version, for example `22H2`.
-    pub display_version: String,
-
-    /// Build number, for example `19045`.
-    pub build: String,
-
-    /// Update Build Revision (UBR), for example `3803`.
-    pub update_build_revision: Option<u32>,
-}
-
-impl Diagnostics {
-    /// Serializes the diagnostics as compact JSON for the FFI boundary.
-    pub fn to_json(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(self)
-    }
-}
+pub use ui_contract::{DiagnosticsPayload as Diagnostics, WindowsVersionPayload as WindowsVersion};
 
 /// Collects diagnostics without elevation and without modifying the system.
 pub fn diagnostics() -> Diagnostics {
-    Diagnostics {
-        agent_version: env!("CARGO_PKG_VERSION").to_string(),
-        os: std::env::consts::OS.to_string(),
-        architecture: std::env::consts::ARCH.to_string(),
-        windows: windows_version(),
-    }
+    Diagnostics::new(
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        windows_version(),
+    )
 }
 
 /// Reads the Windows version block from the registry.

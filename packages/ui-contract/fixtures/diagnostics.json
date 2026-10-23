@@ -1,0 +1,16 @@
+{
+    "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "agent_version": "0.1.0",
+    "os": "windows",
+    "architecture": "x86_64",
+    "windows": {
+        "product_name": "Windows 10 Pro",
+        "display_version": "22H2",
+        "build": "19045",
+        "update_build_revision": 6466
+    }
+}

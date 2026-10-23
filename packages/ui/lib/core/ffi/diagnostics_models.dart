@@ -1,6 +1,9 @@
+import "contract_version.dart";
+
 /// Typed view of the JSON payload returned by `ll10_diagnostics_json`.
 class Diagnostics {
     const Diagnostics({
+        this.contractVersion = const ContractVersion.current(),
         required this.agentVersion,
         required this.os,
         required this.architecture,
@@ -9,6 +12,11 @@ class Diagnostics {
 
     /// Parses the payload produced by the Rust agent.
     factory Diagnostics.fromJson(Map<String, dynamic> json) {
+        final contractVersion = ContractVersion.fromJson(
+            json["contract_version"],
+        );
+        contractVersion.ensureSupported();
+
         final windows = json["windows"];
 
         if (windows != null && windows is! Map<String, dynamic>) {
@@ -16,12 +24,16 @@ class Diagnostics {
         }
 
         return Diagnostics(
+            contractVersion: contractVersion,
             agentVersion: _requireString(json, "agent_version"),
             os: _requireString(json, "os"),
             architecture: _requireString(json, "architecture"),
             windows: windows == null ? null : WindowsVersion.fromJson(windows),
         );
     }
+
+    /// Version of the JSON contract used by this payload.
+    final ContractVersion contractVersion;
 
     /// Version of the running agent build.
     final String agentVersion;

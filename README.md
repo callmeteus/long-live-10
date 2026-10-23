@@ -30,6 +30,7 @@ Monorepo with packages under `packages/`:
 |---------|----------------|
 | `agent` | User entry point, diagnostics, coordination |
 | `agent-ffi` | C ABI loaded by the Flutter app; owns `unsafe` and JSON marshalling |
+| `ui-contract` | Versioned JSON payloads and shared fixtures for the interface |
 | `ui` | Flutter desktop application (Windows first) |
 | `patch-core` | Applicability, planning, execution, validation, rollback |
 | `updater` | Release queries, manifest verification, downloads, self-update |
@@ -60,8 +61,8 @@ cargo test -p vm-harness
 ### Flutter interface
 
 `packages/ui` is a Flutter desktop app with a diagnostics screen, typed models,
-and English and Portuguese strings. The Windows runner builds and starts with
-the Rust library installed next to the executable.
+a versioned catalog contract, and English and Portuguese strings. The Windows
+runner builds and starts with the Rust library installed next to the executable.
 
 ```powershell
 cargo build -p agent-ffi --release

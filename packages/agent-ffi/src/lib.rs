@@ -79,6 +79,7 @@ mod tests {
             .expect("diagnostics are valid UTF-8");
 
         let parsed: serde_json::Value = serde_json::from_str(json).expect("diagnostics are JSON");
+        assert!(parsed.get("contract_version").is_some());
         assert!(parsed.get("agent_version").is_some());
         assert!(parsed.get("architecture").is_some());
 

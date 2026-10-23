@@ -7,7 +7,9 @@ authors.workspace = true
 description = "User entry point and read-only diagnostics for Long Live 10"
 
 [dependencies]
-serde = { workspace = true }
+ui-contract = { path = "../ui-contract" }
+
+[dev-dependencies]
 serde_json = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
