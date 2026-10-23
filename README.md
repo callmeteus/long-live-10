@@ -4,7 +4,7 @@ Community-driven project to extend Windows 10 support after conventional support
 
 ## Status
 
-Phase 1: the Hyper-V provider and base image guide are in place, with real VM validation pending a prepared image. Phase 2: versioned catalog contracts, fixtures, and validators are implemented. The Flutter interface shell and the diagnostics screen are implemented. See [ROADMAP.md](ROADMAP.md) for planned work and `.stillmark/plans/` for the private execution plan.
+Versioned catalog contracts, the compatibility catalog, applicability and operation planning, the agent command line, signed release packaging, and the Flutter diagnostics and status screens are implemented. Unit and contract tests pass. The Hyper-V provider and base image guide are ready, but real VM validation is pending a prepared image. The CI and release workflows exist but have not run on GitHub Actions. See the [support matrix](docs/support-matrix.md) for supported, experimental, and out-of-scope capabilities, [ROADMAP.md](ROADMAP.md) for planned work, and `.stillmark/plans/` for the private execution plan.
 
 ## Goals
 
@@ -28,17 +28,17 @@ Monorepo with packages under `packages/`:
 
 | Package | Responsibility |
 |---------|----------------|
-| `agent` | User entry point, diagnostics, coordination |
+| `agent` | Diagnostics and the bounded command line for plan, file apply, and revert |
 | `agent-ffi` | C ABI loaded by the Flutter app; owns `unsafe` and JSON marshalling |
 | `ui-contract` | Versioned JSON payloads and shared fixtures for the interface |
 | `ui` | Flutter desktop application (Windows first) |
-| `patch-core` | Applicability, planning, execution, validation, rollback |
-| `updater` | Release queries, manifest verification, downloads, self-update |
+| `patch-core` | Applicability, operation planning, and conflict detection |
+| `updater` | Signed release manifest verification and key lifecycle |
 | `catalog-schema` | Versioned contracts for patches, artifacts, builds, results |
 | `compatibility-engine` | Requirement resolution for devices, drivers, and software |
 | `compatibility-catalog` | Versioned catalog data and fixtures |
 | `vm-harness` | Disposable VM automation for Windows testing |
-| `release-tools` | Packaging, manifests, and pre-release validation |
+| `release-tools` | Release specs, packaging, staging, and manifest signing |
 
 The interface is Flutter and talks to the Rust core through `dart:ffi` and a small C ABI. The Dart side loads the `agent-ffi` dynamic library and exchanges UTF-8 JSON. See [ADR-003](docs/decisions/ADR-003-flutter-ui.md) for the boundary and the required toolchain.
 
@@ -50,6 +50,7 @@ npm run test       # cargo test
 npm run lint       # cargo clippy
 npm run format     # cargo fmt
 npm run validate:catalog  # validate patch and compatibility catalogs
+npm run test:ci    # test changed-file detection for CI
 ```
 
 Run one package only:
@@ -57,6 +58,19 @@ Run one package only:
 ```powershell
 cargo test -p vm-harness
 ```
+
+### Agent command line
+
+`packages/agent` builds `ll10-agent`. Diagnostics are read-only. Plan, apply, and revert work from a request document, and apply and revert are dry runs unless `--confirm` is present.
+
+```powershell
+cargo run -p agent --bin ll10-agent -- diagnostics --json
+cargo run -p agent --bin ll10-agent -- plan --request request.json
+cargo run -p agent --bin ll10-agent -- apply --request request.json --artifact-dir artifacts --target-dir target --journal journal --confirm
+cargo run -p agent --bin ll10-agent -- revert --journal journal --confirm
+```
+
+The current executor only replaces files inside the required target directory. Package and registry operations are rejected before anything is written. See [packages/agent/README.md](packages/agent/README.md).
 
 ### Flutter interface
 
@@ -80,6 +94,9 @@ Setup details live in [docs/development/](docs/development/). The Hyper-V test i
 ## Planning
 
 - Public roadmap: [ROADMAP.md](ROADMAP.md)
+- Support matrix: [docs/support-matrix.md](docs/support-matrix.md)
+- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Governance and funding: [GOVERNANCE.md](GOVERNANCE.md)
 - Architecture decisions: [docs/decisions/](docs/decisions/)
 - Execution plan, progress, and findings: `.stillmark/plans/` (local, not versioned)
 
