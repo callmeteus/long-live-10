@@ -1,6 +1,94 @@
 use anyhow::Result;
-use catalog_schema::{Architecture, PatchEntry, Validate};
+use catalog_schema::{Architecture, Artifact, PatchEntry, Validate};
 use std::collections::{HashMap, HashSet};
+
+/// Permitted operation types for the patch engine.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OperationKind {
+    /// Capture a backup before making changes.
+    Backup,
+    /// Validate a precondition before execution.
+    ValidatePrecondition,
+    /// Replace or update a target file.
+    ReplaceFile,
+    /// Remove or update a registry value.
+    UpdateRegistry,
+    /// Apply a package artifact.
+    ApplyPackage,
+    /// Create a restore point entry for rollback.
+    RecordRestore,
+    /// Roll back a previously recorded change.
+    Rollback,
+}
+
+/// A planned operation in execution order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlannedOperation {
+    /// Stable operation identifier within the plan.
+    pub id: String,
+    /// Operation type.
+    pub kind: OperationKind,
+    /// Identifier of the patch that produces this operation.
+    pub patch_id: String,
+    /// Target path or resource affected by the operation.
+    pub target: String,
+    /// Operations that must run before this one.
+    pub depends_on: Vec<String>,
+    /// Explanation of why this operation is planned.
+    pub reason: String,
+}
+
+/// Type of conflict detected during planning.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConflictKind {
+    /// Two operations target the same resource in an incompatible way.
+    ResourceOverlap,
+    /// A required artifact is missing from the request.
+    MissingArtifact,
+    /// A prerequisite is not satisfied.
+    MissingPrerequisite,
+    /// The patch is not applicable to the guest.
+    NotApplicable,
+    /// Applicability cannot be determined safely.
+    Refused,
+    /// Operations would conflict in ordering or permission.
+    OrderConflict,
+}
+
+/// A detected conflict that blocks execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Conflict {
+    /// Conflict classification.
+    pub kind: ConflictKind,
+    /// Human readable explanation.
+    pub description: String,
+    /// Identifiers of involved patches or operations.
+    pub involved: Vec<String>,
+}
+
+/// Ordered plan for applying one or more patches.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatchPlan {
+    /// Operations in execution order.
+    pub operations: Vec<PlannedOperation>,
+    /// Conflicts that prevent safe execution.
+    pub conflicts: Vec<Conflict>,
+    /// Recovery artifacts are planned and ready.
+    pub recovery_ready: bool,
+}
+
+/// Request to plan patch operations.
+#[derive(Debug, Clone)]
+pub struct PlanRequest<'a> {
+    /// Patch to plan.
+    pub patch: &'a PatchEntry,
+    /// Artifacts available for the patch.
+    pub artifacts: &'a [Artifact],
+    /// Current guest state.
+    pub state: &'a GuestState,
+    /// Additional requirements for applicability.
+    pub requirements: &'a PatchRequirements,
+}
 
 /// Version information for an installed component.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,6 +154,167 @@ impl PatchEngine {
     /// Creates a new patch engine.
     pub fn new() -> Self {
         Self
+    }
+
+    /// Plans operations for a patch request with conflict detection.
+    pub fn plan(&self, request: &PlanRequest) -> PatchPlan {
+        let mut conflicts = Vec::new();
+        let mut operations = Vec::new();
+
+        match self.evaluate(request.patch, request.requirements, request.state) {
+            Applicability::NotApplicable => {
+                conflicts.push(Conflict {
+                    kind: ConflictKind::NotApplicable,
+                    description: format!(
+                        "patch {} is not applicable to this guest",
+                        request.patch.id
+                    ),
+                    involved: vec![request.patch.id.clone()],
+                });
+            }
+            Applicability::Refused { reason } => {
+                conflicts.push(Conflict {
+                    kind: ConflictKind::Refused,
+                    description: reason,
+                    involved: vec![request.patch.id.clone()],
+                });
+            }
+            Applicability::Applicable => {}
+        }
+
+        if request.artifacts.is_empty() {
+            conflicts.push(Conflict {
+                kind: ConflictKind::MissingArtifact,
+                description: format!("patch {} has no artifacts available", request.patch.id),
+                involved: vec![request.patch.id.clone()],
+            });
+        }
+
+        if request.patch.validate().is_err() {
+            conflicts.push(Conflict {
+                kind: ConflictKind::Refused,
+                description: "patch entry is invalid".to_string(),
+                involved: vec![request.patch.id.clone()],
+            });
+        }
+
+        for artifact in request.artifacts {
+            if artifact.validate().is_err() {
+                conflicts.push(Conflict {
+                    kind: ConflictKind::Refused,
+                    description: format!("artifact {} is invalid", artifact.id),
+                    involved: vec![request.patch.id.clone(), artifact.id.clone()],
+                });
+            }
+
+            if artifact.patch_id != request.patch.id {
+                conflicts.push(Conflict {
+                    kind: ConflictKind::OrderConflict,
+                    description: format!(
+                        "artifact {} belongs to {} but was provided for {}",
+                        artifact.id, artifact.patch_id, request.patch.id
+                    ),
+                    involved: vec![request.patch.id.clone(), artifact.id.clone()],
+                });
+            }
+        }
+
+        let mut seen_resources: HashMap<String, String> = HashMap::new();
+        let mut pending_conflicts: Vec<Conflict> = Vec::new();
+
+        for artifact in request.artifacts {
+            let resource = artifact.file_name.clone();
+            if let Some(existing) = seen_resources.get(&resource) {
+                pending_conflicts.push(Conflict {
+                    kind: ConflictKind::ResourceOverlap,
+                    description: format!(
+                        "artifacts {} and {} target the same file {}",
+                        existing, artifact.id, resource
+                    ),
+                    involved: vec![
+                        request.patch.id.clone(),
+                        existing.clone(),
+                        artifact.id.clone(),
+                    ],
+                });
+                continue;
+            }
+
+            seen_resources.insert(resource.clone(), artifact.id.clone());
+        }
+
+        if !pending_conflicts.is_empty() {
+            conflicts.extend(pending_conflicts);
+        }
+
+        if conflicts.is_empty() {
+            operations.push(PlannedOperation {
+                id: format!("{}-backup", request.patch.id),
+                kind: OperationKind::Backup,
+                patch_id: request.patch.id.clone(),
+                target: "system-state".to_string(),
+                depends_on: Vec::new(),
+                reason: "capture recovery point before changes".to_string(),
+            });
+
+            operations.push(PlannedOperation {
+                id: format!("{}-validate-preconditions", request.patch.id),
+                kind: OperationKind::ValidatePrecondition,
+                patch_id: request.patch.id.clone(),
+                target: request.patch.component.clone(),
+                depends_on: vec![format!("{}-backup", request.patch.id)],
+                reason: "verify preconditions remain satisfied".to_string(),
+            });
+
+            for artifact in request.artifacts {
+                let resource = artifact.file_name.clone();
+
+                let kind = match artifact.kind {
+                    catalog_schema::ArtifactKind::Msu
+                    | catalog_schema::ArtifactKind::Msi
+                    | catalog_schema::ArtifactKind::Cab => OperationKind::ApplyPackage,
+                    catalog_schema::ArtifactKind::Dll => OperationKind::ReplaceFile,
+                    catalog_schema::ArtifactKind::Driver => OperationKind::ReplaceFile,
+                    catalog_schema::ArtifactKind::Other => OperationKind::ReplaceFile,
+                };
+
+                operations.push(PlannedOperation {
+                    id: format!("{}-{}", request.patch.id, artifact.id),
+                    kind,
+                    patch_id: request.patch.id.clone(),
+                    target: resource,
+                    depends_on: vec![format!("{}-validate-preconditions", request.patch.id)],
+                    reason: format!("apply {} artifact", artifact.file_name),
+                });
+            }
+
+            operations.push(PlannedOperation {
+                id: format!("{}-record-restore", request.patch.id),
+                kind: OperationKind::RecordRestore,
+                patch_id: request.patch.id.clone(),
+                target: "rollback-log".to_string(),
+                depends_on: operations
+                    .iter()
+                    .filter(|op| {
+                        op.patch_id == request.patch.id
+                            && op.kind != OperationKind::Backup
+                            && op.kind != OperationKind::RecordRestore
+                    })
+                    .map(|op| op.id.clone())
+                    .collect(),
+                reason: "record manifest for reversible rollback".to_string(),
+            });
+        }
+
+        operations.sort_by_key(operation_order);
+
+        let recovery_ready = conflicts.is_empty();
+
+        PatchPlan {
+            operations,
+            conflicts,
+            recovery_ready,
+        }
     }
 
     /// Evaluates whether a patch applies to a guest state.
@@ -284,6 +533,18 @@ fn version_le(installed: &str, maximum: &str) -> bool {
     }
 
     compare_version_tokens(&installed, &maximum) <= 0
+}
+
+fn operation_order(operation: &PlannedOperation) -> u8 {
+    match operation.kind {
+        OperationKind::Backup => 0,
+        OperationKind::ValidatePrecondition => 1,
+        OperationKind::ReplaceFile => 2,
+        OperationKind::UpdateRegistry => 3,
+        OperationKind::ApplyPackage => 4,
+        OperationKind::RecordRestore => 5,
+        OperationKind::Rollback => 6,
+    }
 }
 
 fn normalize_version(value: &str) -> Vec<u64> {
