@@ -5,3 +5,10 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Requirement resolution for devices, drivers, and software"
+
+[dependencies]
+catalog-schema = { path = "../catalog-schema" }
+compatibility-catalog = { path = "../compatibility-catalog" }
+
+[dev-dependencies]
+serde_json = { workspace = true }

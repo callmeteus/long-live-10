@@ -200,6 +200,11 @@ dependencies = [
 [[package]]
 name = "compatibility-engine"
 version = "0.1.0"
+dependencies = [
+ "catalog-schema",
+ "compatibility-catalog",
+ "serde_json",
+]
 
 [[package]]
 name = "const-oid"
