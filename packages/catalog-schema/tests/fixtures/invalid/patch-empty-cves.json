@@ -1,0 +1,19 @@
+{
+    "id": "kb-test-0001",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "cves": [],
+    "component": "kernel",
+    "builds": [
+        "19045.6466"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "title": "Fixture patch",
+    "description": "Synthetic patch used by catalog schema tests.",
+    "status": "experimental"
+}

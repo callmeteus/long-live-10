@@ -1,0 +1,14 @@
+{
+    "id": "artifact-test-0001",
+    "patch_id": "kb-test-0001",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "msu",
+    "file_name": "windows10-test-patch.msu",
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "size_bytes": 1048576,
+    "source_url": "http://example.invalid/artifacts/windows10-test-patch.msu"
+}
