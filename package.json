@@ -8,6 +8,7 @@
         "build:release": "cargo build --release",
         "test": "cargo test",
         "test:vm": "cargo test -p vm-harness",
+        "validate:catalog": "cargo run --quiet -p catalog-schema --bin catalog-validate -- catalogs",
         "lint": "cargo clippy -- -D warnings",
         "format": "cargo fmt",
         "format:check": "cargo fmt -- --check"

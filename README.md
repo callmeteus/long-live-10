@@ -48,6 +48,7 @@ npm run build      # cargo build
 npm run test       # cargo test
 npm run lint       # cargo clippy
 npm run format     # cargo fmt
+npm run validate:catalog  # validate JSON under catalogs/
 ```
 
 Run one package only:

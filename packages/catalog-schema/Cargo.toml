@@ -10,3 +10,4 @@ description = "Versioned schemas and contracts for Long Live 10"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+anyhow = { workspace = true }

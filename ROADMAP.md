@@ -7,9 +7,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-001** Unify monorepo commands and dependency rules
   priority: high · status: planned · added: 2026-10-23
   Root commands build, test, lint, and validate each package; package dependencies stay directional and documented.
-- [ ] **R-002** Versioned catalog schema contracts
-  priority: high · status: planned · added: 2026-10-23
-  Schemas for patch, artifact, target build, and validation result, with valid and invalid fixtures.
 - [ ] **R-003** Agent diagnostics command
   priority: medium · status: planned · added: 2026-10-23
   Report OS build, architecture, installed patches, and catalog state without administrator rights.
@@ -135,3 +132,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-044** Windows runner builds and launches with the Rust library bundled
   priority: medium · status: done · done: 2026-10-23
   Flutter release build verified; agent_ffi.dll is installed next to the executable and the window opens centered.
+- [x] **R-002** Versioned catalog schema contracts
+  priority: high · status: done · added: 2026-10-23 · done: 2026-10-23
+  Schemas for patch, artifact, target build, and validation result, with valid and invalid fixtures.
