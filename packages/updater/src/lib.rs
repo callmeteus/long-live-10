@@ -368,6 +368,17 @@ impl SignedManifest {
         now: u64,
         current_version: &str,
     ) -> Result<(), ManifestError> {
+        self.verify_with_channel(keyring, now, current_version, None)
+    }
+
+    /// Verifies the signature and validates the manifest for a specific channel.
+    pub fn verify_with_channel(
+        &self,
+        keyring: &KeyRing,
+        now: u64,
+        current_version: &str,
+        expected_channel: Option<ReleaseChannel>,
+    ) -> Result<(), ManifestError> {
         let encoded = self
             .signature
             .as_deref()
@@ -397,6 +408,15 @@ impl SignedManifest {
         verifying_key
             .verify(&message, &signature)
             .map_err(|_| ManifestError::InvalidSignature)?;
+
+        if let Some(channel) = expected_channel {
+            if self.manifest.channel != channel {
+                return Err(ManifestError::InvalidChannel {
+                    expected: format!("{:?}", channel),
+                    found: format!("{:?}", self.manifest.channel),
+                });
+            }
+        }
 
         self.manifest.validate(now, current_version)
     }
@@ -617,6 +637,14 @@ pub enum ManifestError {
     InvalidVersion {
         /// Value found in the manifest.
         value: String,
+    },
+    /// Manifest channel does not match the expected channel.
+    #[error("manifest channel {found} does not match expected {expected}")]
+    InvalidChannel {
+        /// Found channel.
+        found: String,
+        /// Expected channel.
+        expected: String,
     },
     /// Manifest validity window is reversed or empty.
     #[error("manifest validity window is invalid: {published_at} to {expires_at}")]
