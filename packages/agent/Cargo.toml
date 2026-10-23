@@ -6,11 +6,23 @@ license.workspace = true
 authors.workspace = true
 description = "User entry point and read-only diagnostics for Long Live 10"
 
+[[bin]]
+name = "ll10-agent"
+path = "src/main.rs"
+
 [dependencies]
 ui-contract = { path = "../ui-contract" }
+catalog-schema = { path = "../catalog-schema" }
+patch-core = { path = "../patch-core" }
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = "0.10"
 
 [dev-dependencies]
-serde_json = { workspace = true }
+tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"

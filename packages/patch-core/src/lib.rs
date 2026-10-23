@@ -1,9 +1,11 @@
 use anyhow::Result;
 use catalog_schema::{Architecture, Artifact, PatchEntry, Validate};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 /// Permitted operation types for the patch engine.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum OperationKind {
     /// Capture a backup before making changes.
     Backup,
@@ -22,7 +24,7 @@ pub enum OperationKind {
 }
 
 /// A planned operation in execution order.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlannedOperation {
     /// Stable operation identifier within the plan.
     pub id: String,
@@ -39,7 +41,8 @@ pub struct PlannedOperation {
 }
 
 /// Type of conflict detected during planning.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ConflictKind {
     /// Two operations target the same resource in an incompatible way.
     ResourceOverlap,
@@ -56,7 +59,7 @@ pub enum ConflictKind {
 }
 
 /// A detected conflict that blocks execution.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Conflict {
     /// Conflict classification.
     pub kind: ConflictKind,
@@ -67,7 +70,7 @@ pub struct Conflict {
 }
 
 /// Ordered plan for applying one or more patches.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PatchPlan {
     /// Operations in execution order.
     pub operations: Vec<PlannedOperation>,
@@ -91,14 +94,14 @@ pub struct PlanRequest<'a> {
 }
 
 /// Version information for an installed component.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComponentVersion {
     /// Component version string as reported by the guest.
     pub version: String,
 }
 
 /// Component version requirement.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComponentRequirement {
     /// Component identifier that must exist in the guest state.
     pub component: String,
@@ -109,7 +112,7 @@ pub struct ComponentRequirement {
 }
 
 /// Requirements that the guest must satisfy for a patch.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct PatchRequirements {
     /// Component version constraints.
     pub component_versions: Vec<ComponentRequirement>,
@@ -118,7 +121,7 @@ pub struct PatchRequirements {
 }
 
 /// Observable state of a guest system.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GuestState {
     /// Windows build number.
     pub build: u32,
@@ -133,7 +136,8 @@ pub struct GuestState {
 }
 
 /// Result of applicability evaluation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Applicability {
     /// The patch can be applied given the known state.
     Applicable,

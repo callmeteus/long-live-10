@@ -1,8 +1,13 @@
 ﻿//! Agent surface shared by the command line and the Flutter desktop app.
 //!
-//! Diagnostics are read-only and never require administrator rights. The
+//! Diagnostics are read-only and never require administrator rights. Planning,
+//! apply, and revert are available through the `ll10-agent` command line. The
 //! Flutter app reaches this crate through `agent-ffi`, which serializes the
 //! same types to UTF-8 JSON.
+
+pub mod cli;
+pub mod executor;
+pub mod request;
 
 pub use ui_contract::{DiagnosticsPayload as Diagnostics, WindowsVersionPayload as WindowsVersion};
 
