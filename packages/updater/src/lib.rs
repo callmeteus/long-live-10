@@ -177,6 +177,17 @@ impl ReleaseManifest {
     }
 }
 
+/// Lifecycle state of a trusted signing key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrustedKeyStatus {
+    /// Key may sign new manifests.
+    Active,
+    /// Key may only sign manifests published before it was retired.
+    Retired,
+    /// Key must never be accepted again.
+    Revoked,
+}
+
 /// Public key trusted to sign release manifests.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrustedKey {
@@ -184,14 +195,23 @@ pub struct TrustedKey {
     pub id: String,
     /// Raw Ed25519 public key bytes.
     pub public_key: [u8; 32],
+    /// Current lifecycle state.
+    pub status: TrustedKeyStatus,
+    /// Unix timestamp before which the key must not be used.
+    pub not_before: Option<u64>,
+    /// Unix timestamp after which the key must not be used.
+    pub not_after: Option<u64>,
 }
 
 impl TrustedKey {
-    /// Creates a trusted key from raw bytes.
+    /// Creates an active trusted key from raw bytes.
     pub fn new(id: impl Into<String>, public_key: [u8; 32]) -> Self {
         Self {
             id: id.into(),
             public_key,
+            status: TrustedKeyStatus::Active,
+            not_before: None,
+            not_after: None,
         }
     }
 
@@ -205,10 +225,70 @@ impl TrustedKey {
             .try_into()
             .map_err(|_| ManifestError::InvalidPublicKey)?;
 
-        Ok(Self {
-            id: id.into(),
-            public_key,
-        })
+        Ok(Self::new(id, public_key))
+    }
+
+    /// Restricts the key to a validity window.
+    pub fn with_window(mut self, not_before: u64, not_after: u64) -> Self {
+        self.not_before = Some(not_before);
+        self.not_after = Some(not_after);
+
+        self
+    }
+
+    /// Marks the key as retired at the given Unix timestamp.
+    pub fn retired(mut self, retired_at: u64) -> Self {
+        self.status = TrustedKeyStatus::Retired;
+        self.not_after = Some(retired_at);
+
+        self
+    }
+
+    /// Marks the key as revoked.
+    pub fn revoked(mut self) -> Self {
+        self.status = TrustedKeyStatus::Revoked;
+
+        self
+    }
+
+    /// Checks whether the key may have produced a manifest published at the
+    /// given time.
+    pub fn ensure_usable_at(&self, published_at: u64) -> Result<(), ManifestError> {
+        match self.status {
+            TrustedKeyStatus::Revoked => {
+                return Err(ManifestError::RevokedKey {
+                    key_id: self.id.clone(),
+                });
+            }
+            TrustedKeyStatus::Retired if self.not_after.is_none() => {
+                return Err(ManifestError::RetiredKey {
+                    key_id: self.id.clone(),
+                });
+            }
+            _ => {}
+        }
+
+        if let Some(not_before) = self.not_before {
+            if published_at < not_before {
+                return Err(ManifestError::KeyNotYetValid {
+                    key_id: self.id.clone(),
+                    not_before,
+                    published_at,
+                });
+            }
+        }
+
+        if let Some(not_after) = self.not_after {
+            if published_at > not_after {
+                return Err(ManifestError::KeyExpired {
+                    key_id: self.id.clone(),
+                    not_after,
+                    published_at,
+                });
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -232,6 +312,30 @@ impl KeyRing {
     /// Finds a key by identifier.
     pub fn find(&self, id: &str) -> Option<&TrustedKey> {
         self.keys.iter().find(|key| key.id == id)
+    }
+
+    /// Revokes a key. Returns whether the key was present.
+    pub fn revoke(&mut self, id: &str) -> bool {
+        let Some(key) = self.keys.iter_mut().find(|key| key.id == id) else {
+            return false;
+        };
+
+        key.status = TrustedKeyStatus::Revoked;
+
+        true
+    }
+
+    /// Retires a key at the given Unix timestamp. Returns whether the key was
+    /// present.
+    pub fn retire(&mut self, id: &str, retired_at: u64) -> bool {
+        let Some(key) = self.keys.iter_mut().find(|key| key.id == id) else {
+            return false;
+        };
+
+        key.status = TrustedKeyStatus::Retired;
+        key.not_after = Some(retired_at);
+
+        true
     }
 }
 
@@ -267,6 +371,8 @@ impl SignedManifest {
                 key_id: self.key_id.clone(),
             })?;
 
+        key.ensure_usable_at(self.manifest.published_at)?;
+
         let signature_bytes = Base64
             .decode(encoded)
             .map_err(|_| ManifestError::InvalidSignatureEncoding)?;
@@ -284,6 +390,28 @@ impl SignedManifest {
             .map_err(|_| ManifestError::InvalidSignature)?;
 
         self.manifest.validate(now, current_version)
+    }
+
+    /// Verifies the manifest and returns one of its artifacts.
+    ///
+    /// A revoked key rejects the whole manifest, so any artifact signed by that
+    /// key is refused before it can be downloaded.
+    pub fn verify_artifact<'a>(
+        &'a self,
+        keyring: &KeyRing,
+        now: u64,
+        current_version: &str,
+        artifact_id: &str,
+    ) -> Result<&'a ReleaseArtifact, ManifestError> {
+        self.verify(keyring, now, current_version)?;
+
+        self.manifest
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.id == artifact_id)
+            .ok_or_else(|| ManifestError::UnknownArtifact {
+                artifact_id: artifact_id.to_string(),
+            })
     }
 }
 
@@ -429,6 +557,46 @@ pub enum ManifestError {
     /// Public key is malformed.
     #[error("trusted public key is malformed")]
     InvalidPublicKey,
+    /// Key has been revoked and must never sign another manifest.
+    #[error("manifest was signed by a revoked key: {key_id}")]
+    RevokedKey {
+        /// Identifier of the revoked key.
+        key_id: String,
+    },
+    /// Key has been retired without a validity cutoff.
+    #[error("manifest was signed by a retired key without a cutoff: {key_id}")]
+    RetiredKey {
+        /// Identifier of the retired key.
+        key_id: String,
+    },
+    /// Manifest predates the key validity window.
+    #[error(
+        "key {key_id} is not valid before {not_before}, manifest was published at {published_at}"
+    )]
+    KeyNotYetValid {
+        /// Identifier of the key.
+        key_id: String,
+        /// Start of the key validity window.
+        not_before: u64,
+        /// Manifest publication time.
+        published_at: u64,
+    },
+    /// Manifest postdates the key validity window.
+    #[error("key {key_id} expired at {not_after}, manifest was published at {published_at}")]
+    KeyExpired {
+        /// Identifier of the key.
+        key_id: String,
+        /// End of the key validity window.
+        not_after: u64,
+        /// Manifest publication time.
+        published_at: u64,
+    },
+    /// Requested artifact is not present in the verified manifest.
+    #[error("artifact is not present in the manifest: {artifact_id}")]
+    UnknownArtifact {
+        /// Identifier provided by the caller.
+        artifact_id: String,
+    },
     /// Manifest JSON cannot be serialized for verification.
     #[error("manifest encoding failed: {message}")]
     ManifestEncoding {

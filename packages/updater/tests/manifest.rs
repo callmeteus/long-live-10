@@ -5,7 +5,7 @@ use ed25519_dalek::SigningKey;
 use std::sync::Mutex;
 use updater::{
     sign_manifest, HttpTransport, KeyRing, ManifestError, ManifestFetcher, ManifestTransport,
-    ReleaseArtifact, ReleaseChannel, ReleaseManifest, SignedManifest, TrustedKey,
+    ReleaseArtifact, ReleaseChannel, ReleaseManifest, SignedManifest, TrustedKey, TrustedKeyStatus,
 };
 
 const NOW: u64 = 1_800_000_000;
@@ -271,6 +271,175 @@ fn rejects_a_short_public_key() {
     assert_eq!(
         TrustedKey::from_base64("test-key", &Base64.encode([1u8; 31])),
         Err(ManifestError::InvalidPublicKey)
+    );
+}
+
+fn other_signing_key() -> SigningKey {
+    SigningKey::from_bytes(&[8u8; 32])
+}
+
+fn signed_at(version: &str, key_id: &str, key: &SigningKey, published_at: u64) -> SignedManifest {
+    let mut manifest = manifest(version);
+    manifest.published_at = published_at;
+
+    sign_manifest(manifest, key_id, key).expect("manifest signs")
+}
+
+#[test]
+fn rejects_a_manifest_signed_by_a_revoked_key() {
+    let mut keyring = keyring();
+
+    assert!(keyring.revoke("test-key"));
+
+    assert_eq!(
+        signed("1.1.0").verify(&keyring, NOW, "1.0.0"),
+        Err(ManifestError::RevokedKey {
+            key_id: "test-key".to_string()
+        })
+    );
+}
+
+#[test]
+fn revoking_an_unknown_key_reports_no_change() {
+    let mut keyring = keyring();
+
+    assert!(!keyring.revoke("missing-key"));
+}
+
+#[test]
+fn rejects_artifacts_from_a_revoked_key() {
+    let mut keyring = keyring();
+    keyring.revoke("test-key");
+
+    assert_eq!(
+        signed("1.1.0").verify_artifact(&keyring, NOW, "1.0.0", "artifact-1"),
+        Err(ManifestError::RevokedKey {
+            key_id: "test-key".to_string()
+        })
+    );
+}
+
+#[test]
+fn accepts_a_manifest_published_before_the_key_was_retired() {
+    let mut keyring = keyring();
+
+    assert!(keyring.retire("test-key", NOW - 30));
+
+    signed_at("1.1.0", "test-key", &signing_key(), NOW - 60)
+        .verify(&keyring, NOW, "1.0.0")
+        .expect("manifest predates retirement");
+}
+
+#[test]
+fn accepts_a_manifest_published_at_the_retirement_cutoff() {
+    let mut keyring = keyring();
+    keyring.retire("test-key", NOW - 60);
+
+    signed_at("1.1.0", "test-key", &signing_key(), NOW - 60)
+        .verify(&keyring, NOW, "1.0.0")
+        .expect("manifest is at the cutoff");
+}
+
+#[test]
+fn rejects_a_new_manifest_from_a_retired_key() {
+    let mut keyring = keyring();
+    keyring.retire("test-key", NOW - 30);
+
+    assert_eq!(
+        signed_at("1.1.0", "test-key", &signing_key(), NOW - 10).verify(&keyring, NOW, "1.0.0"),
+        Err(ManifestError::KeyExpired {
+            key_id: "test-key".to_string(),
+            not_after: NOW - 30,
+            published_at: NOW - 10
+        })
+    );
+}
+
+#[test]
+fn rejects_a_retired_key_without_a_cutoff() {
+    let mut key = TrustedKey::new("test-key", signing_key().verifying_key().to_bytes());
+    key.status = TrustedKeyStatus::Retired;
+    let keyring = KeyRing::new(vec![key]);
+
+    assert_eq!(
+        signed("1.1.0").verify(&keyring, NOW, "1.0.0"),
+        Err(ManifestError::RetiredKey {
+            key_id: "test-key".to_string()
+        })
+    );
+}
+
+#[test]
+fn accepts_both_keys_during_a_rotation() {
+    let retired_key =
+        TrustedKey::new("test-key", signing_key().verifying_key().to_bytes()).retired(NOW - 30);
+    let new_key = TrustedKey::new("new-key", other_signing_key().verifying_key().to_bytes());
+    let keyring = KeyRing::new(vec![retired_key, new_key]);
+
+    signed_at("1.1.0", "test-key", &signing_key(), NOW - 60)
+        .verify(&keyring, NOW, "1.0.0")
+        .expect("old manifest is still trusted");
+
+    signed_at("1.2.0", "new-key", &other_signing_key(), NOW - 10)
+        .verify(&keyring, NOW, "1.0.0")
+        .expect("new manifest uses the new key");
+
+    assert!(matches!(
+        signed_at("1.3.0", "test-key", &signing_key(), NOW - 10).verify(&keyring, NOW, "1.0.0"),
+        Err(ManifestError::KeyExpired { .. })
+    ));
+}
+
+#[test]
+fn rejects_a_manifest_before_the_key_validity_window() {
+    let key = TrustedKey::new("test-key", signing_key().verifying_key().to_bytes())
+        .with_window(NOW - 30, NOW + 60);
+    let keyring = KeyRing::new(vec![key]);
+
+    assert_eq!(
+        signed_at("1.1.0", "test-key", &signing_key(), NOW - 60).verify(&keyring, NOW, "1.0.0"),
+        Err(ManifestError::KeyNotYetValid {
+            key_id: "test-key".to_string(),
+            not_before: NOW - 30,
+            published_at: NOW - 60
+        })
+    );
+}
+
+#[test]
+fn rejects_a_manifest_after_the_key_validity_window() {
+    let key = TrustedKey::new("test-key", signing_key().verifying_key().to_bytes())
+        .with_window(NOW - 120, NOW - 90);
+    let keyring = KeyRing::new(vec![key]);
+
+    assert_eq!(
+        signed_at("1.1.0", "test-key", &signing_key(), NOW - 60).verify(&keyring, NOW, "1.0.0"),
+        Err(ManifestError::KeyExpired {
+            key_id: "test-key".to_string(),
+            not_after: NOW - 90,
+            published_at: NOW - 60
+        })
+    );
+}
+
+#[test]
+fn returns_a_verified_artifact() {
+    let signed = signed("1.1.0");
+    let artifact = signed
+        .verify_artifact(&keyring(), NOW, "1.0.0", "artifact-1")
+        .expect("artifact is trusted");
+
+    assert_eq!(artifact.id, "artifact-1");
+    assert_eq!(artifact.file_name, "long-live-10.msi");
+}
+
+#[test]
+fn rejects_an_unknown_artifact() {
+    assert_eq!(
+        signed("1.1.0").verify_artifact(&keyring(), NOW, "1.0.0", "missing"),
+        Err(ManifestError::UnknownArtifact {
+            artifact_id: "missing".to_string()
+        })
     );
 }
 
