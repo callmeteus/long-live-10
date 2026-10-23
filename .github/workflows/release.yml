@@ -1,0 +1,173 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the leading v
+        required: true
+      base_url:
+        description: HTTPS base URL for the artifacts
+        required: true
+      notes:
+        description: Release notes, one per line
+        required: false
+      limitations:
+        description: Known limitations, one per line
+        required: false
+      rollback_steps:
+        description: Rollback steps, one per line
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: windows-latest
+    env:
+      LL10_KEY_ID: ${{ vars.LL10_KEY_ID }}
+      LL10_BASE_URL: ${{ github.event.inputs.base_url || vars.LL10_BASE_URL }}
+      LL10_SIGNING_KEY: ${{ secrets.LL10_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Resolve version and tag
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          $version = if ([string]::IsNullOrWhiteSpace($env:INPUT_VERSION)) { "${{ github.ref_name }}" } else { $env:INPUT_VERSION }
+          $version = $version.TrimStart("v")
+
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "A release version is required."
+          }
+
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "v$version" } else { "${{ github.ref_name }}" }
+
+          "VERSION=$version" >> $env:GITHUB_ENV
+          "TAG=$tag" >> $env:GITHUB_ENV
+          "RELEASE_DIR=packages/ui/build/windows/x64/runner/Release" >> $env:GITHUB_ENV
+          "ARCHIVE=dist/long-live-10-$version-windows-x64.zip" >> $env:GITHUB_ENV
+
+      - name: Test Rust workspace
+        run: cargo test --workspace
+
+      - name: Restore Flutter packages
+        working-directory: packages/ui
+        run: flutter pub get
+
+      - name: Test Flutter interface
+        working-directory: packages/ui
+        run: flutter test
+
+      - name: Build the FFI library
+        run: cargo build --release -p agent-ffi
+
+      - name: Build the Windows runner
+        working-directory: packages/ui
+        run: flutter build windows --release
+
+      - name: Archive the Windows runner
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "$env:RELEASE_DIR\*" -DestinationPath $env:ARCHIVE -Force
+
+      - name: Generate release spec
+        shell: pwsh
+        env:
+          INPUT_NOTES: ${{ github.event.inputs.notes }}
+          INPUT_LIMITATIONS: ${{ github.event.inputs.limitations }}
+          INPUT_ROLLBACK: ${{ github.event.inputs.rollback_steps }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:LL10_KEY_ID)) {
+            $env:LL10_KEY_ID = "release-2026-a"
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:LL10_BASE_URL)) {
+            throw "Set the LL10_BASE_URL repository variable or pass base_url."
+          }
+
+          $notes = @()
+          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_NOTES)) {
+            $notes = @($env:INPUT_NOTES -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+          }
+
+          if ($notes.Count -eq 0) {
+            $notes = @("Release $($env:VERSION).")
+          }
+
+          $limitations = @()
+          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_LIMITATIONS)) {
+            $limitations = @($env:INPUT_LIMITATIONS -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+          }
+
+          $rollback = @()
+          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_ROLLBACK)) {
+            $rollback = @($env:INPUT_ROLLBACK -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+          }
+
+          if ($rollback.Count -eq 0) {
+            $rollback = @(
+              "Uninstall Long Live 10.",
+              "Reinstall the previous release from the download archive."
+            )
+          }
+
+          $baseUrl = $env:LL10_BASE_URL.TrimEnd("/")
+          $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+          $spec = [ordered]@{
+            version = $env:VERSION
+            channel = "stable"
+            published_at = $now
+            expires_at = $now + (30 * 24 * 60 * 60)
+            minimum_version = $null
+            base_url = $baseUrl
+            key_id = $env:LL10_KEY_ID
+            notes = @($notes)
+            limitations = @($limitations)
+            rollback_steps = @($rollback)
+            artifacts = @(
+              @{
+                id = "windows-x64"
+                path = $env:ARCHIVE
+              }
+            )
+          }
+
+          $json = $spec | ConvertTo-Json -Depth 6
+          [System.IO.File]::WriteAllText(
+            (Join-Path $PWD "release-spec.json"),
+            $json,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+
+      - name: Sign and stage release
+        run: cargo run -p release-tools --bin release-build -- --spec release-spec.json --out dist/release
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Long Live 10 ${{ env.VERSION }}
+          generate_release_notes: true
+          files: |
+            dist/release/release-manifest.json
+            dist/release/release-public-key.txt
+            dist/release/artifacts/*.zip

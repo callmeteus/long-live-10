@@ -1,0 +1,134 @@
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect affected packages
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.affected.outputs.rust }}
+      has_rust: ${{ steps.affected.outputs.has_rust }}
+      ui: ${{ steps.affected.outputs.ui }}
+      catalog: ${{ steps.affected.outputs.catalog }}
+      vm: ${{ steps.affected.outputs.vm }}
+      ci: ${{ steps.affected.outputs.ci }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Map changed files to checks
+        id: affected
+        shell: bash
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="HEAD^"
+          fi
+
+          node tools/ci/affected.mjs "$BASE" HEAD
+
+  format:
+    name: Format
+    needs: changes
+    if: needs.changes.outputs.has_rust == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  rust:
+    name: Rust ${{ matrix.package }}
+    needs: changes
+    if: needs.changes.outputs.has_rust == 'true'
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.rust) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -p ${{ matrix.package }} --all-targets -- -D warnings
+      - run: cargo test -p ${{ matrix.package }}
+
+  catalog:
+    name: Catalog validation
+    needs: changes
+    if: needs.changes.outputs.catalog == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm run validate:catalog
+
+  ui:
+    name: Flutter interface
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: cargo build -p agent-ffi
+      - working-directory: packages/ui
+        run: flutter pub get
+      - working-directory: packages/ui
+        run: flutter analyze
+      - name: Flutter tests with the real library
+        working-directory: packages/ui
+        env:
+          LL10_AGENT_FFI: ${{ github.workspace }}\target\debug\agent_ffi.dll
+        run: flutter test
+
+  ci-scripts:
+    name: CI scripts
+    needs: changes
+    if: needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tools/ci/affected.test.mjs
+
+  vm:
+    name: VM smoke tests
+    needs: changes
+    if: >-
+      needs.changes.outputs.vm == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'vm-tests')))
+    runs-on: [self-hosted, windows, hyperv]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p vm-harness -- --ignored
