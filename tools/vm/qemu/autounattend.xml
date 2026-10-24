@@ -19,6 +19,11 @@
                         <CreatePartition wcm:action="add">
                             <Order>1</Order>
                             <Type>Primary</Type>
+                            <Size>500</Size>
+                        </CreatePartition>
+                        <CreatePartition wcm:action="add">
+                            <Order>2</Order>
+                            <Type>Primary</Type>
                             <Extend>true</Extend>
                         </CreatePartition>
                     </CreatePartitions>
@@ -27,9 +32,15 @@
                             <Order>1</Order>
                             <PartitionID>1</PartitionID>
                             <Format>NTFS</Format>
+                            <Label>System Reserved</Label>
+                            <Active>true</Active>
+                        </ModifyPartition>
+                        <ModifyPartition wcm:action="add">
+                            <Order>2</Order>
+                            <PartitionID>2</PartitionID>
+                            <Format>NTFS</Format>
                             <Label>Windows</Label>
                             <Letter>C</Letter>
-                            <Active>true</Active>
                         </ModifyPartition>
                     </ModifyPartitions>
                 </Disk>
@@ -45,7 +56,7 @@
                     </InstallFrom>
                     <InstallTo>
                         <DiskID>0</DiskID>
-                        <PartitionID>1</PartitionID>
+                        <PartitionID>2</PartitionID>
                     </InstallTo>
                     <WillShowUI>OnError</WillShowUI>
                 </OSImage>
@@ -59,7 +70,7 @@
                     <WillShowUI>Never</WillShowUI>
                 </ProductKey>
             </UserData>
-            <EnableFirewall>true</EnableFirewall>
+            <EnableFirewall>false</EnableFirewall>
             <DynamicUpdate>
                 <Enable>false</Enable>
                 <WillShowUI>Never</WillShowUI>
@@ -133,7 +144,7 @@
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
                     <Order>1</Order>
-                    <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 15; Start-Transcript -Path C:\ll10-setup.log -Append; Enable-PSRemoting -Force -SkipNetworkProfileCheck; Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true; Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true; Set-Service WinRM -StartupType Automatic; Start-Service WinRM; New-NetFirewallRule -DisplayName LL10-WinRM -Direction Inbound -Protocol TCP -LocalPort 5985 -Action Allow; Set-LocalUser -Name ll10 -PasswordNeverExpires $true; Set-Service wuauserv -StartupType Disabled; Stop-Service wuauserv -Force; Stop-Transcript"</CommandLine>
+                    <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 15; Start-Transcript -Path C:\ll10-setup.log -Append; netsh advfirewall set allprofiles state off; Enable-PSRemoting -Force -SkipNetworkProfileCheck; Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true; Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true; Set-Service WinRM -StartupType Automatic; Start-Service WinRM; Set-LocalUser -Name ll10 -PasswordNeverExpires $true; Set-Service wuauserv -StartupType Disabled; Stop-Service wuauserv -Force; Stop-Transcript"</CommandLine>
                     <Description>Configure Long Live 10 test VM</Description>
                     <RequiresUserInput>false</RequiresUserInput>
                 </SynchronousCommand>
