@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use catalog_schema::{PatchEntry, Validate};
 use compatibility_catalog::CompatibilityEntry;
 use serde_json::Value;
 use std::ffi::OsStr;
@@ -76,6 +77,14 @@ fn validate_file(path: &Path) -> Result<()> {
     let object = value
         .as_object()
         .context("document must be a JSON object")?;
+
+    if object.contains_key("cves") {
+        let entry: PatchEntry = serde_json::from_value(value).context("invalid patch entry")?;
+
+        entry.validate()?;
+
+        return Ok(());
+    }
 
     if !object.contains_key("tested_builds") || !object.contains_key("sources") {
         bail!("not a compatibility entry: missing tested_builds or sources");
