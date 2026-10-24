@@ -53,6 +53,16 @@ Nothing in this project is approved for production machines. Every apply or reve
 
 A capability moves from experimental to supported only after the VM tier passes and the evidence is recorded in the repository.
 
+## Local VM validation
+
+Windows 10 Home hosts without Hyper-V management cmdlets can use the documented
+QEMU/WHPX path in `docs/vm/windows-10-22h2-qemu.md`. The VM is reproducible
+through `yarn vm:setup`, `yarn vm:start`, `yarn vm:revert`, and `yarn vm:finalize`.
+
+Guest command automation currently requires manual WinRM setup on some images.
+See the manual guest setup section of the QEMU document before running
+`yarn vm:smoke`.
+
 ## Reporting a gap
 
 If a target or capability is missing, open an issue with the target build, architecture, and the evidence you can provide. Do not attach proprietary binaries. See [CONTRIBUTING.md](../CONTRIBUTING.md).
