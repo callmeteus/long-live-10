@@ -37,9 +37,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-052** CVE-2026-20805 and CVE-2026-20816: DWM disclosure and Installer elevation from early 2026
   priority: medium · status: planned · added: 2026-10-23
   CVE-2026-20805 (Desktop Window Manager information disclosure) was reported exploited in the wild in 2026-01; CVE-2026-20816 (Windows Installer elevation, 7.8, TOCTOU race). Sources are community triage rather than CISA KEV, so verify exploitation status and applicability before starting.
-- [ ] **R-053** Suppress Microsoft end-of-support migration prompts
-  priority: medium · status: planned · added: 2026-10-23
-  Hide the one-per-period full-screen migration notice, the taskbar migration warning, and related prompts Microsoft pushes on Windows 10 after the support end; keep the agent's own diagnostics as the single status surface.
 ## Deferred
 
 - [ ] **R-034** Windows 10 21H2 and LTSC 2019 support
@@ -162,3 +159,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-006** Scheduled full test matrix in VMs
   priority: medium · status: done · added: 2026-10-23 · done: 2026-10-24
   Supported builds, clean install, upgrade, interrupted install, rollback, and offline scenarios.
+- [x] **R-053** Suppress Microsoft end-of-support migration prompts
+  priority: medium · status: done · added: 2026-10-23 · done: 2026-10-24
+  Hide the one-per-period full-screen migration notice, the taskbar migration warning, and related prompts Microsoft pushes on Windows 10 after the support end; keep the agent's own diagnostics as the single status surface.
