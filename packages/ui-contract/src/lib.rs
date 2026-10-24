@@ -28,6 +28,14 @@ pub struct DiagnosticsPayload {
     pub architecture: String,
     /// Windows version data, present only when running on Windows.
     pub windows: Option<WindowsVersionPayload>,
+
+    /// Installed Windows updates reported without elevation.
+    #[serde(default)]
+    pub installed_patches: Vec<String>,
+
+    /// State of the compatibility catalog for the detected build.
+    #[serde(default)]
+    pub catalog_state: String,
 }
 
 impl DiagnosticsPayload {
@@ -44,6 +52,8 @@ impl DiagnosticsPayload {
             os: os.into(),
             architecture: architecture.into(),
             windows,
+            installed_patches: Vec::new(),
+            catalog_state: "unknown".to_string(),
         }
     }
 
@@ -56,6 +66,12 @@ impl DiagnosticsPayload {
 
         if let Some(windows) = &self.windows {
             windows.validate()?;
+        }
+
+        if self.catalog_state.trim().is_empty() {
+            return Err(ContractError::EmptyField {
+                field: "catalog_state",
+            });
         }
 
         Ok(())

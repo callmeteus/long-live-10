@@ -8,6 +8,8 @@ class Diagnostics {
         required this.os,
         required this.architecture,
         this.windows,
+        this.installedPatches = const <String>[],
+        this.catalogState = "unknown",
     });
 
     /// Parses the payload produced by the Rust agent.
@@ -23,12 +25,35 @@ class Diagnostics {
             throw const FormatException("\"windows\" must be an object or null.");
         }
 
+        final installedPatches = <String>[];
+        final rawPatches = json["installed_patches"];
+        if (rawPatches != null) {
+            if (rawPatches is! List) {
+                throw const FormatException("\"installed_patches\" must be a list.");
+            }
+            for (final value in rawPatches) {
+                if (value is! String || value.isEmpty) {
+                    throw const FormatException(
+                        "\"installed_patches\" must contain non-empty strings.",
+                    );
+                }
+                installedPatches.add(value);
+            }
+        }
+
+        final catalogState = json["catalog_state"];
+        if (catalogState != null && catalogState is! String) {
+            throw const FormatException("\"catalog_state\" must be a string.");
+        }
+
         return Diagnostics(
             contractVersion: contractVersion,
             agentVersion: _requireString(json, "agent_version"),
             os: _requireString(json, "os"),
             architecture: _requireString(json, "architecture"),
             windows: windows == null ? null : WindowsVersion.fromJson(windows),
+            installedPatches: installedPatches,
+            catalogState: catalogState as String? ?? "unknown",
         );
     }
 
@@ -46,6 +71,12 @@ class Diagnostics {
 
     /// Windows version data, absent on non-Windows hosts.
     final WindowsVersion? windows;
+
+    /// Installed Windows updates reported without elevation.
+    final List<String> installedPatches;
+
+    /// State of the compatibility catalog for the detected build.
+    final String catalogState;
 }
 
 /// Windows version block read from the registry by the Rust core.

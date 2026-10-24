@@ -13,12 +13,20 @@ pub use ui_contract::{DiagnosticsPayload as Diagnostics, WindowsVersionPayload a
 
 /// Collects diagnostics without elevation and without modifying the system.
 pub fn diagnostics() -> Diagnostics {
-    Diagnostics::new(
+    let windows = windows_version();
+    let catalog_state = catalog_state(windows.as_ref());
+
+    let mut info = Diagnostics::new(
         env!("CARGO_PKG_VERSION"),
         std::env::consts::OS,
         std::env::consts::ARCH,
-        windows_version(),
-    )
+        windows,
+    );
+
+    info.installed_patches = installed_patches();
+    info.catalog_state = catalog_state;
+
+    info
 }
 
 /// Reads the Windows version block from the registry.
@@ -48,6 +56,47 @@ fn windows_version() -> Option<WindowsVersion> {
 #[cfg(not(windows))]
 fn windows_version() -> Option<WindowsVersion> {
     None
+}
+
+/// Collects installed update identifiers without elevation.
+#[cfg(windows)]
+fn installed_patches() -> Vec<String> {
+    use std::process::Command;
+
+    let output = Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            "Get-HotFix | Select-Object -ExpandProperty HotFixID",
+        ])
+        .output();
+
+    match output {
+        Ok(result) if result.status.success() => String::from_utf8_lossy(&result.stdout)
+            .lines()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned)
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Non-Windows hosts have no hotfix list.
+#[cfg(not(windows))]
+fn installed_patches() -> Vec<String> {
+    Vec::new()
+}
+
+/// Describes catalog coverage for the detected Windows build.
+fn catalog_state(windows: Option<&WindowsVersion>) -> String {
+    match windows {
+        Some(version) if version.build == "19045" => {
+            "supported baseline: Windows 10 22H2 x64".to_string()
+        }
+        Some(_) => "build not in the supported catalog".to_string(),
+        None => "not applicable".to_string(),
+    }
 }
 
 #[cfg(test)]
