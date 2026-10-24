@@ -1,4 +1,4 @@
-# Windows 10 22H2 QEMU VM (host without Hyper-V management)
+﻿# Windows 10 22H2 QEMU VM (host without Hyper-V management)
 
 This document describes a disposable Windows 10 22H2 x64 VM that runs under
 QEMU with WHPX acceleration. It is intended for hosts where the Hyper-V
@@ -23,10 +23,10 @@ management cmdlets are unavailable (for example, Windows 10 Home).
 From the repository root:
 
 ```powershell
-npm run vm:setup
-npm run vm:start
-npm run vm:revert
-npm run vm:smoke
+yarn vm:setup
+yarn vm:start
+yarn vm:revert
+yarn vm:smoke
 ```
 
 `vm:setup` downloads the official ISO, builds the unattended install media, creates

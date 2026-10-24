@@ -3,11 +3,11 @@
 ## Quick start
 
 ```powershell
-npm run build       # cargo build
-npm run test        # cargo test
-npm run lint        # cargo clippy -- -D warnings
-npm run format      # cargo fmt
-npm run validate:catalog  # validate patch and compatibility catalogs
+yarn build       # cargo build
+yarn test        # cargo test
+yarn lint        # cargo clippy -- -D warnings
+yarn format      # cargo fmt
+yarn validate:catalog  # validate patch and compatibility catalogs
 ```
 
 Build or test a single package:
@@ -77,7 +77,7 @@ Pull requests run only the checks affected by the changed files. The mapping liv
 Run the mapping locally:
 
 ```powershell
-npm run test:ci
+yarn test:ci
 node tools/ci/affected.mjs HEAD^ HEAD
 ```
 

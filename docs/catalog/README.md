@@ -1,11 +1,11 @@
-# Catalogs
+﻿# Catalogs
 
 ## Compatibility catalog
 
 The compatibility catalog lists devices, drivers, and software with known compatibility status for supported Windows builds.
 
 - Location: [`packages/compatibility-catalog/`](../../packages/compatibility-catalog/)
-- Validation: `npm run validate:catalog`
+- Validation: `yarn validate:catalog`
 - Schema: [`packages/catalog-schema/`](../../packages/catalog-schema/)
 - Entries: [`packages/compatibility-catalog/entries/`](../../packages/compatibility-catalog/entries/)
 

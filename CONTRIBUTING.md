@@ -16,12 +16,12 @@ Read the [support matrix](docs/support-matrix.md) before proposing a feature. It
 ## Setup
 
 ```powershell
-npm run build
-npm run test
-npm run lint
-npm run format
-npm run validate:catalog
-npm run test:ci
+yarn build
+yarn test
+yarn lint
+yarn format
+yarn validate:catalog
+yarn test:ci
 ```
 
 Flutter commands need the stable Flutter SDK and Visual Studio 2022 with the C++ workload:
@@ -77,7 +77,7 @@ A change is not ready when a warning remains in a file you touched.
 Run the validators before opening a pull request:
 
 ```powershell
-npm run validate:catalog
+yarn validate:catalog
 ```
 
 ## Patch and execution changes
@@ -112,7 +112,7 @@ Update `ROADMAP.md` through the Stillmark CLI instead of editing it by hand.
 The CLI is installed from the [latest Stillmark release](https://github.com/callmeteus/stillmark/releases/latest):
 
 ```bash
-npm install -g https://github.com/callmeteus/stillmark/releases/latest/download/stillmark.tgz
+yarn install -g https://github.com/callmeteus/stillmark/releases/latest/download/stillmark.tgz
 ```
 
 Stillmark does not ship an OpenCode adapter yet. Install the agent skill manually:

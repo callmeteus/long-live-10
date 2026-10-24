@@ -51,8 +51,8 @@ cargo run -p catalog-schema --bin catalog-validate -- ../../catalogs
 From the repository root, use:
 
 ```powershell
-npm run validate:catalog
-npm run validate:catalog -- catalogs/target-builds
+yarn validate:catalog
+yarn validate:catalog -- catalogs/target-builds
 ```
 
 The command exits with a non-zero status when a file is malformed, has an unknown shape, or fails validation.

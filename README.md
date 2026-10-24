@@ -45,12 +45,12 @@ The interface is Flutter and talks to the Rust core through `dart:ffi` and a sma
 ## Development
 
 ```powershell
-npm run build      # cargo build
-npm run test       # cargo test
-npm run lint       # cargo clippy
-npm run format     # cargo fmt
-npm run validate:catalog  # validate patch and compatibility catalogs
-npm run test:ci    # test changed-file detection for CI
+yarn build      # cargo build
+yarn test       # cargo test
+yarn lint       # cargo clippy
+yarn format     # cargo fmt
+yarn validate:catalog  # validate patch and compatibility catalogs
+yarn test:ci    # test changed-file detection for CI
 ```
 
 Run one package only:

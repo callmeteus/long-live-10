@@ -1,4 +1,4 @@
-# Catalog
+﻿# Catalog
 
 Versioned catalog data consumed by the agent, updater, and compatibility tooling.
 
@@ -18,13 +18,13 @@ Directories are created as entries are added. The validator scans recursively, s
 From the repository root:
 
 ```powershell
-npm run validate:catalog
+yarn validate:catalog
 ```
 
 Pass one or more files or directories to validate a subset:
 
 ```powershell
-npm run validate:catalog -- catalogs/target-builds
+yarn validate:catalog -- catalogs/target-builds
 ```
 
 The command exits with a non-zero status when any file is malformed or fails semantic validation. Every contract carries a schema version and is validated through `catalog-schema`.

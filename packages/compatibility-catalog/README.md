@@ -54,7 +54,7 @@ Driver and device entries belong in `entries/drivers/` and `entries/devices/` on
 From the repository root:
 
 ```powershell
-npm run validate:catalog
+yarn validate:catalog
 ```
 
 This runs the patch catalog validator and the compatibility validator. Run only the compatibility validator with:
