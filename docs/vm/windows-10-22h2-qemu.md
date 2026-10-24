@@ -69,6 +69,23 @@ $dir = "C:\Users\Gio\VMs\long-live-10"
 - QMP: `127.0.0.1:4444`
 - VNC: `127.0.0.1:5901`
 
+## Manual guest setup
+
+The unattended install creates the `ll10` administrator account, but WinRM may still
+be blocked by the guest firewall on some images. If `yarn vm:smoke` cannot connect,
+open an elevated PowerShell session in the guest through RDP or the QEMU console and run:
+
+```powershell
+netsh advfirewall set allprofiles state off
+Enable-PSRemoting -Force -SkipNetworkProfileCheck
+Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true
+Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true
+Set-Service WinRM -StartupType Automatic
+Start-Service WinRM
+```
+
+Then rerun `yarn vm:smoke`.
+
 Credentials are stored in `C:\Users\Gio\VMs\long-live-10\vm\credentials.txt` and are
 not committed to this repository.
 
