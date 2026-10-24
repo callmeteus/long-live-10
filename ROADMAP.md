@@ -22,9 +22,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-021** First experimental security patch with technical evidence
   priority: high · status: planned · added: 2026-10-23
   Documented vulnerability, bounded mitigation, and tests that prove the mitigated behavior.
-- [ ] **R-045** Triage newly disclosed Windows 10 CVEs after end of support
-  priority: high · status: planned · added: 2026-10-23
-  Monthly intake from MSRC, CISA KEV, and vendor advisories; classify by exploitation status, severity, and 22H2 applicability; feed the security patch catalog and the experimental patch work.
 - [ ] **R-046** CVE-2026-96951: Windows Shell Mark of the Web bypass, actively exploited
   priority: critical · status: planned · added: 2026-10-23
   Command injection in Windows Shell rated 8.8; added to CISA KEV on 2026-10-13 as actively exploited; weaponized through malicious LNK files; Windows 10 22H2 fixed in build 19045.7807. The community fix must restore MotW handling and prove the bypass no longer works in a VM.
@@ -162,3 +159,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-016** Offline and catalog-unavailable behavior
   priority: medium · status: done · added: 2026-10-23 · done: 2026-10-24
   Defined behavior when the network, catalog, or release host is unreachable.
+- [x] **R-045** Triage newly disclosed Windows 10 CVEs after end of support
+  priority: high · status: done · added: 2026-10-23 · done: 2026-10-24
+  Monthly intake from MSRC, CISA KEV, and vendor advisories; classify by exploitation status, severity, and 22H2 applicability; feed the security patch catalog and the experimental patch work.
