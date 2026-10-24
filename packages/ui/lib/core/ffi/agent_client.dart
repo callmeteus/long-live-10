@@ -38,6 +38,33 @@ class AgentFfiException implements Exception {
     String toString() => "AgentFfiException: $message";
 }
 
+/// Caches the last successful diagnostics so callers can keep working when
+/// the agent is temporarily unavailable.
+class CachedAgentClient implements AgentClient {
+    CachedAgentClient(this._delegate);
+
+    final AgentClient _delegate;
+
+    Diagnostics? _cached;
+
+    /// Whether a previous successful read is available.
+    bool get hasCachedDiagnostics => _cached != null;
+
+    @override
+    Future<Diagnostics> readDiagnostics() async {
+        try {
+            final diagnostics = await _delegate.readDiagnostics();
+            _cached = diagnostics;
+            return diagnostics;
+        } catch (error) {
+            if (_cached != null) {
+                return _cached!;
+            }
+            rethrow;
+        }
+    }
+}
+
 /// Loads `agent_ffi.dll` and reads diagnostics through the C ABI.
 class FfiAgentClient implements AgentClient {
     FfiAgentClient._(this._diagnosticsJson, this._freeString, this.abiVersion);

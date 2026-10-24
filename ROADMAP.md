@@ -16,9 +16,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-015** Self-update with failure recovery
   priority: high · status: planned · added: 2026-10-23
   Safe update of the agent itself with rollback when installation or startup fails.
-- [ ] **R-016** Offline and catalog-unavailable behavior
-  priority: medium · status: planned · added: 2026-10-23
-  Defined behavior when the network, catalog, or release host is unreachable.
 - [ ] **R-020** First compatibility fix validated in a VM
   priority: medium · status: planned · added: 2026-10-23
   Small reproducible case with apply, verification, and revert evidence.
@@ -162,3 +159,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-018** Compatibility catalog for devices, drivers, and software
   priority: high · status: done · added: 2026-10-23 · done: 2026-10-24
   Hardware IDs, driver versions, tested builds, dependencies, known issues, and limitations.
+- [x] **R-016** Offline and catalog-unavailable behavior
+  priority: medium · status: done · added: 2026-10-23 · done: 2026-10-24
+  Defined behavior when the network, catalog, or release host is unreachable.
