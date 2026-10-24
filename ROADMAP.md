@@ -4,9 +4,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 
 ## Backlog
 
-- [ ] **R-003** Agent diagnostics command
-  priority: medium · status: planned · added: 2026-10-23
-  Report OS build, architecture, installed patches, and catalog state without administrator rights.
 - [ ] **R-004** Hyper-V VM harness for disposable tests
   priority: critical · status: planned · added: 2026-10-23
   Base image, checkpoints, artifact transfer, guest command execution, log capture, and teardown.
@@ -162,3 +159,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-022** Patch validation standard
   priority: high · status: done · added: 2026-10-23 · done: 2026-10-23
   Define the evidence that separates experimental from validated; a completed installer is not proof.
+- [x] **R-003** Agent diagnostics command
+  priority: medium · status: done · added: 2026-10-23 · done: 2026-10-24
+  Report OS build, architecture, installed patches, and catalog state without administrator rights.
