@@ -12,6 +12,7 @@
         "vm:start": "powershell -ExecutionPolicy Bypass -File tools/vm/qemu/Start-Vm.ps1",
         "vm:revert": "powershell -ExecutionPolicy Bypass -File tools/vm/qemu/Revert-Vm.ps1",
         "vm:smoke": "powershell -ExecutionPolicy Bypass -File tools/vm/qemu/Invoke-SmokeTest.ps1",
+        "vm:finalize": "powershell -ExecutionPolicy Bypass -File tools/vm/qemu/Finalize-Vm.ps1",
         "test:ci": "node --test tools/ci/affected.test.mjs",
         "ci:affected": "node tools/ci/affected.mjs",
         "release:build": "cargo run -p release-tools --bin release-build --",
