@@ -1,0 +1,28 @@
+{
+    "id": "software-powershell-7",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": "PowerShell 7",
+    "vendor": "Microsoft",
+    "description": "Cross-platform PowerShell runtime and shell used by administrative and automation tooling on Windows 10.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "version": "7.4.x",
+    "sources": [
+        {
+            "title": "PowerShell GitHub releases",
+            "url": "https://github.com/PowerShell/PowerShell/releases",
+            "publisher": "Microsoft",
+            "retrieved_at": "2026-10-24"
+        }
+    ],
+    "status": "experimental"
+}

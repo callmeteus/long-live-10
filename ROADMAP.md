@@ -19,9 +19,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-016** Offline and catalog-unavailable behavior
   priority: medium · status: planned · added: 2026-10-23
   Defined behavior when the network, catalog, or release host is unreachable.
-- [ ] **R-018** Compatibility catalog for devices, drivers, and software
-  priority: high · status: planned · added: 2026-10-23
-  Hardware IDs, driver versions, tested builds, dependencies, known issues, and limitations.
 - [ ] **R-020** First compatibility fix validated in a VM
   priority: medium · status: planned · added: 2026-10-23
   Small reproducible case with apply, verification, and revert evidence.
@@ -162,3 +159,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-010** Apply, validate, and roll back permitted operations
   priority: critical · status: done · added: 2026-10-23 · done: 2026-10-24
   Only allow-listed operation types; validation proves the intended effect instead of installer exit codes.
+- [x] **R-018** Compatibility catalog for devices, drivers, and software
+  priority: high · status: done · added: 2026-10-23 · done: 2026-10-24
+  Hardware IDs, driver versions, tested builds, dependencies, known issues, and limitations.

@@ -1,0 +1,28 @@
+{
+    "id": "software-dotnet-desktop-runtime-8",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "software",
+    "name": ".NET Desktop Runtime 8",
+    "vendor": "Microsoft",
+    "description": "Desktop runtime required by many modern Windows applications on Windows 10 22H2.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "version": "8.0.x",
+    "sources": [
+        {
+            "title": ".NET 8 download page",
+            "url": "https://dotnet.microsoft.com/download/dotnet/8.0",
+            "publisher": "Microsoft",
+            "retrieved_at": "2026-10-24"
+        }
+    ],
+    "status": "experimental"
+}

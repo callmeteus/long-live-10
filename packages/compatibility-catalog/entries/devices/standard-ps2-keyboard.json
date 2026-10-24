@@ -1,0 +1,30 @@
+{
+    "id": "device-standard-ps2-keyboard",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "device",
+    "name": "Standard PS/2 Keyboard",
+    "vendor": "Microsoft",
+    "description": "Baseline input device present in most physical and virtual machines running Windows 10.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "hardware_ids": [
+        "*PNP0303"
+    ],
+    "sources": [
+        {
+            "title": "Windows hardware IDs for keyboards",
+            "url": "https://learn.microsoft.com/windows-hardware/drivers/install/standard-keyboard",
+            "publisher": "Microsoft",
+            "retrieved_at": "2026-10-24"
+        }
+    ],
+    "status": "experimental"
+}

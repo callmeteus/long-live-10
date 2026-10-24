@@ -1,0 +1,31 @@
+{
+    "id": "driver-microsoft-kdnic",
+    "schema_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+    },
+    "kind": "driver",
+    "name": "Microsoft Kernel Debug Network Adapter",
+    "vendor": "Microsoft",
+    "description": "Virtual network adapter used for kernel debugging and test environments on Windows 10.",
+    "tested_builds": [
+        "win10-22h2-x64"
+    ],
+    "architectures": [
+        "x64"
+    ],
+    "hardware_ids": [
+        "ROOT\\KDNIC"
+    ],
+    "driver_version": "10.0.19041.1",
+    "sources": [
+        {
+            "title": "Kernel Debug Network Adapter",
+            "url": "https://learn.microsoft.com/windows-hardware/drivers/debugger/setting-up-a-network-debugging-connection",
+            "publisher": "Microsoft",
+            "retrieved_at": "2026-10-24"
+        }
+    ],
+    "status": "experimental"
+}
