@@ -4,15 +4,9 @@ Community support for Windows 10 after conventional support ends. Items describe
 
 ## Backlog
 
-- [ ] **R-004** Hyper-V VM harness for disposable tests
-  priority: critical · status: planned · added: 2026-10-23
-  Base image, checkpoints, artifact transfer, guest command execution, log capture, and teardown.
 - [ ] **R-005** VM smoke test tier
   priority: high · status: planned · added: 2026-10-23
   Install the agent, detect the guest build, validate the catalog, run a harmless operation, then revert.
-- [ ] **R-006** Scheduled full test matrix in VMs
-  priority: medium · status: planned · added: 2026-10-23
-  Supported builds, clean install, upgrade, interrupted install, rollback, and offline scenarios.
 - [ ] **R-015** Self-update with failure recovery
   priority: high · status: planned · added: 2026-10-23
   Safe update of the agent itself with rollback when installation or startup fails.
@@ -162,3 +156,9 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-045** Triage newly disclosed Windows 10 CVEs after end of support
   priority: high · status: done · added: 2026-10-23 · done: 2026-10-24
   Monthly intake from MSRC, CISA KEV, and vendor advisories; classify by exploitation status, severity, and 22H2 applicability; feed the security patch catalog and the experimental patch work.
+- [x] **R-004** Hyper-V VM harness for disposable tests
+  priority: critical · status: done · added: 2026-10-23 · done: 2026-10-24
+  Base image, checkpoints, artifact transfer, guest command execution, log capture, and teardown.
+- [x] **R-006** Scheduled full test matrix in VMs
+  priority: medium · status: done · added: 2026-10-23 · done: 2026-10-24
+  Supported builds, clean install, upgrade, interrupted install, rollback, and offline scenarios.
