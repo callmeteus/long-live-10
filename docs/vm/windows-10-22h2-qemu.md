@@ -18,6 +18,21 @@ management cmdlets are unavailable (for example, Windows 10 Home).
 - Disk: 50 GB qcow2 at `C:\Users\Gio\VMs\long-live-10\vm\ll10-22h2.qcow2`
 - Baseline snapshot tag: `baseline`
 
+## Reproducible commands
+
+From the repository root:
+
+```powershell
+npm run vm:setup
+npm run vm:start
+npm run vm:revert
+npm run vm:smoke
+```
+
+`vm:setup` downloads the official ISO, builds the unattended install media, creates
+the disk, and starts the installation. The other commands assume that setup has
+completed.
+
 ## Start the VM
 
 ```powershell
