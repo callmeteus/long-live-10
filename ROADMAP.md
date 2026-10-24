@@ -28,9 +28,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-016** Offline and catalog-unavailable behavior
   priority: medium · status: planned · added: 2026-10-23
   Defined behavior when the network, catalog, or release host is unreachable.
-- [ ] **R-017** Security patch catalog with provenance and evidence
-  priority: critical · status: planned · added: 2026-10-23
-  CVEs, affected builds, artifact origin, test results, licenses, and lifecycle status per fix.
 - [ ] **R-018** Compatibility catalog for devices, drivers, and software
   priority: high · status: planned · added: 2026-10-23
   Hardware IDs, driver versions, tested builds, dependencies, known issues, and limitations.
@@ -40,12 +37,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-021** First experimental security patch with technical evidence
   priority: high · status: planned · added: 2026-10-23
   Documented vulnerability, bounded mitigation, and tests that prove the mitigated behavior.
-- [ ] **R-025** Vulnerability intake and disclosure process
-  priority: high · status: planned · added: 2026-10-23
-  Private intake, triage, coordinated disclosure, and public advisory template.
-- [ ] **R-029** Public documentation for catalogs and test results
-  priority: low · status: planned · added: 2026-10-23
-  Publish catalog entries, provenance, and test outcomes for users and contributors.
 - [ ] **R-045** Triage newly disclosed Windows 10 CVEs after end of support
   priority: high · status: planned · added: 2026-10-23
   Monthly intake from MSRC, CISA KEV, and vendor advisories; classify by exploitation status, severity, and 22H2 applicability; feed the security patch catalog and the experimental patch work.
@@ -162,3 +153,12 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-003** Agent diagnostics command
   priority: medium · status: done · added: 2026-10-23 · done: 2026-10-24
   Report OS build, architecture, installed patches, and catalog state without administrator rights.
+- [x] **R-017** Security patch catalog with provenance and evidence
+  priority: critical · status: done · added: 2026-10-23 · done: 2026-10-24
+  CVEs, affected builds, artifact origin, test results, licenses, and lifecycle status per fix.
+- [x] **R-025** Vulnerability intake and disclosure process
+  priority: high · status: done · added: 2026-10-23 · done: 2026-10-24
+  Private intake, triage, coordinated disclosure, and public advisory template.
+- [x] **R-029** Public documentation for catalogs and test results
+  priority: low · status: done · added: 2026-10-23 · done: 2026-10-24
+  Publish catalog entries, provenance, and test outcomes for users and contributors.
