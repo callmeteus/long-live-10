@@ -13,15 +13,9 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-006** Scheduled full test matrix in VMs
   priority: medium · status: planned · added: 2026-10-23
   Supported builds, clean install, upgrade, interrupted install, rollback, and offline scenarios.
-- [ ] **R-009** Backup and recovery before privileged changes
-  priority: critical · status: planned · added: 2026-10-23
-  Restore point or file backup plus a documented recovery path for every supported operation.
 - [ ] **R-010** Apply, validate, and roll back permitted operations
   priority: critical · status: planned · added: 2026-10-23
   Only allow-listed operation types; validation proves the intended effect instead of installer exit codes.
-- [ ] **R-011** Narrow privileged interface
-  priority: high · status: planned · added: 2026-10-23
-  Unprivileged detection and catalog access separated from an allow-listed elevated helper.
 - [ ] **R-015** Self-update with failure recovery
   priority: high · status: planned · added: 2026-10-23
   Safe update of the agent itself with rollback when installation or startup fails.
@@ -162,3 +156,9 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-029** Public documentation for catalogs and test results
   priority: low · status: done · added: 2026-10-23 · done: 2026-10-24
   Publish catalog entries, provenance, and test outcomes for users and contributors.
+- [x] **R-009** Backup and recovery before privileged changes
+  priority: critical · status: done · added: 2026-10-23 · done: 2026-10-24
+  Restore point or file backup plus a documented recovery path for every supported operation.
+- [x] **R-011** Narrow privileged interface
+  priority: high · status: done · added: 2026-10-23 · done: 2026-10-24
+  Unprivileged detection and catalog access separated from an allow-listed elevated helper.
