@@ -24,8 +24,8 @@ $args = @(
     "-name", "ll10-22h2",
     "-machine", "pc,accel=whpx",
     "-cpu", "host",
-    "-smp", "4,sockets=1,cores=4,threads=1",
-    "-m", "6144",
+    "-smp", "2,sockets=1,cores=2,threads=1",
+    "-m", "4096",
     "-rtc", "base=localtime,clock=host",
     "-drive", "file=$disk,format=qcow2,if=ide,index=0"
 )
