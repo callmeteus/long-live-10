@@ -25,9 +25,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-011** Narrow privileged interface
   priority: high · status: planned · added: 2026-10-23
   Unprivileged detection and catalog access separated from an allow-listed elevated helper.
-- [ ] **R-014** Stable and experimental release channels
-  priority: medium · status: planned · added: 2026-10-23
-  Channel selection in the updater with separate metadata per channel.
 - [ ] **R-015** Self-update with failure recovery
   priority: high · status: planned · added: 2026-10-23
   Safe update of the agent itself with rollback when installation or startup fails.
@@ -46,9 +43,6 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-021** First experimental security patch with technical evidence
   priority: high · status: planned · added: 2026-10-23
   Documented vulnerability, bounded mitigation, and tests that prove the mitigated behavior.
-- [ ] **R-022** Patch validation standard
-  priority: high · status: planned · added: 2026-10-23
-  Define the evidence that separates experimental from validated; a completed installer is not proof.
 - [ ] **R-025** Vulnerability intake and disclosure process
   priority: high · status: planned · added: 2026-10-23
   Private intake, triage, coordinated disclosure, and public advisory template.
@@ -162,3 +156,9 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [x] **R-041** UI integration tests against the real FFI library
   priority: medium · status: done · added: 2026-10-23 · done: 2026-10-23
   Tests load agent_ffi.dll, assert diagnostics, and verify every returned string is freed.
+- [x] **R-014** Stable and experimental release channels
+  priority: medium · status: done · added: 2026-10-23 · done: 2026-10-23
+  Channel selection in the updater with separate metadata per channel.
+- [x] **R-022** Patch validation standard
+  priority: high · status: done · added: 2026-10-23 · done: 2026-10-23
+  Define the evidence that separates experimental from validated; a completed installer is not proof.
