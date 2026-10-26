@@ -21,6 +21,8 @@
         "motw:verify": "powershell -ExecutionPolicy Bypass -File tools/motw/enforce-motw.ps1 -Mode Verify",
         "motw:revert": "powershell -ExecutionPolicy Bypass -File tools/motw/enforce-motw.ps1 -Mode Revert",
         "motw:test-cycle": "powershell -ExecutionPolicy Bypass -File tools/motw/Invoke-MotWTestCycle.ps1",
+        "shell32:verify": "powershell -ExecutionPolicy Bypass -File tools/shell32-patch/Apply-Shell32Patch.ps1 -Verify",
+        "shell32:apply": "powershell -ExecutionPolicy Bypass -File tools/shell32-patch/Apply-Shell32Patch.ps1",
         "test:ci": "node --test tools/ci/affected.test.mjs",
         "ci:affected": "node tools/ci/affected.mjs",
         "release:build": "cargo run -p release-tools --bin release-build --",
