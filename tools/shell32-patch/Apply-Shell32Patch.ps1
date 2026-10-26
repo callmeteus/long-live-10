@@ -71,7 +71,10 @@ takeown /f $systemShell32 /a 2>$null | Out-Null
 icacls $systemShell32 /grant Administrators:F 2>$null | Out-Null
 
 # --- Create backup ---
-$backupPath = "C:\Windows\System32\shell32.dll.bak"
+$repoRoot = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
+$backupDir = Join-Path $repoRoot ".data\backups"
+if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir -Force | Out-Null }
+$backupPath = Join-Path $backupDir "shell32.dll.bak"
 if (-not (Test-Path $backupPath)) {
     Copy-Item $systemShell32 $backupPath -Force
     Write-Host "Backup created: $backupPath"

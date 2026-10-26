@@ -1,6 +1,6 @@
 # RECOVERY GUIDE: If shell32.dll patch breaks the system
 #
-# The patch creates a backup at: C:\Windows\System32\shell32.dll.bak
+# The patch creates a backup at: <repo>/.data/backups/shell32.dll.bak
 # The patched file is scheduled via MoveFileEx (delayed until reboot).
 #
 # === OPTION 1: Before reboot (patch scheduled but not applied) ===
@@ -19,7 +19,7 @@
 #   4. In Safe Mode, open PowerShell as Admin:
 #      takeown /f C:\Windows\System32\shell32.dll /a
 #      icacls C:\Windows\System32\shell32.dll /grant Administrators:F
-#      Copy-Item C:\Windows\System32\shell32.dll.bak C:\Windows\System32\shell32.dll -Force
+#      Copy-Item <repo>\.data\backups\shell32.dll.bak C:\Windows\System32\shell32.dll -Force
 #   5. Reboot normally
 #
 # Method B - Windows Recovery Environment (WinRE):

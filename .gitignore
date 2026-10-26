@@ -10,3 +10,6 @@
 # Stillmark
 .stillmark/plans/
 .stillmark/learnings/design/
+
+# Local data (backups, journals, etc.)
+.data/
