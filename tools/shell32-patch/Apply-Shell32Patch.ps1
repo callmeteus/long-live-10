@@ -106,5 +106,11 @@ Write-Host "=== PATCH SCHEDULED ===" -ForegroundColor Green
 Write-Host "The patched shell32.dll will replace the original on next reboot."
 Write-Host "Reboot now to apply: Restart-Computer"
 Write-Host ""
-Write-Host "To verify after reboot: yarn motw:verify (or check shell32.dll hash)"
+Write-Host "RECOVERY (if something breaks):" -ForegroundColor Yellow
+Write-Host "  1. Before reboot: delete PendingFileRenameOperations from registry"
+Write-Host "  2. After reboot: Safe Mode -> copy shell32.dll.bak over shell32.dll"
+Write-Host "  3. See tools/shell32-patch/RECOVERY.md for full guide"
+Write-Host "  Backup: C:\Windows\System32\shell32.dll.bak"
+Write-Host ""
+Write-Host "To verify after reboot: yarn shell32:verify"
 Write-Host "To revert: restore from $backupPath"
