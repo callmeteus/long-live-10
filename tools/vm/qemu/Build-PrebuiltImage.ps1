@@ -5,14 +5,14 @@
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File Build-PrebuiltImage.ps1
 #
-# Output: C:\Users\Gio\VMs\long-live-10\vm\ll10-22h2.qcow2
+# Output: $env:USERPROFILE\VMs\long-live-10\vm\ll10-22h2.qcow2
 #
 # After running, use: yarn vm:start ; yarn vm:smoke ; yarn motw:test-cycle
 
 param(
     [string]$VmDir = $(if ($env:LL10_VM_DIR) { $env:LL10_VM_DIR } else { Join-Path $env:USERPROFILE "VMs\long-live-10" }),
 
-    [string]$WimPath = "C:\Users\Gio\VMs\long-live-10\iso\wim\install.wim",
+    [string]$WimPath = "$env:USERPROFILE\VMs\long-live-10\iso\wim\install.wim",
 
     [string]$ImageIndex = "6",  # Windows 10 Pro (index 6 in multi-edition WIM)
 

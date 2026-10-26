@@ -4,14 +4,14 @@
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Build-PrebuiltImage.ps1
 #
-# Output: C:\Users\Gio\VMs\long-live-10\vm\ll10-22h2-prebuilt.vdi
+# Output: $env:USERPROFILE\VMs\long-live-10\vm\ll10-22h2-prebuilt.vdi
 #
-# After running: yarn vm:import -- -BaseImage "C:\Users\Gio\VMs\long-live-10\vm\ll10-22h2-prebuilt.vdi"
+# After running: yarn vm:import -- -BaseImage "$env:USERPROFILE\VMs\long-live-10\vm\ll10-22h2-prebuilt.vdi"
 
 param(
     [string]$VmDir = $(if ($env:LL10_VM_DIR) { $env:LL10_VM_DIR } else { Join-Path $env:USERPROFILE "VMs\long-live-10" }),
 
-    [string]$WimPath = "C:\Users\Gio\VMs\long-live-10\iso\wim\install.wim",
+    [string]$WimPath = "$env:USERPROFILE\VMs\long-live-10\iso\wim\install.wim",
 
     [string]$ImageIndex = "6",
 
