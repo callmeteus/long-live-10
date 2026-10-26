@@ -29,6 +29,45 @@ yarn vm:revert
 yarn vm:smoke
 ```
 
+## Pre-built image (recommended for speed and reliability)
+
+The unattended install path (`yarn vm:setup`) takes 20-30 minutes and can be
+fragile on Windows 10 Home hosts. For faster, more reliable setup, import a
+pre-built disk image instead:
+
+```powershell
+# Convert/import a VHD, VHDX, or qcow2 image:
+yarn vm:import -- -Image "C:\images\Win10_22H2.qcow2"
+
+# Or directly:
+powershell -ExecutionPolicy Bypass -File tools/vm/qemu/Import-Vm.ps1 -Image "C:\images\Win10_22H2.vhdx"
+```
+
+Supported input formats: `.qcow2` (copied directly), `.vhd`, `.vhdx`, `.raw`,
+`.img` (converted via `qemu-img`).
+
+### Where to get a pre-built image
+
+- **Microsoft Evaluation Center** (free, 90-day eval): download the Windows 10
+  Enterprise VHD and convert with `qemu-img convert`.
+- **Create your own once**: run `yarn vm:setup` once, complete OOBE manually,
+  then `yarn vm:finalize` to create the `baseline` snapshot. The qcow2 at
+  `C:\Users\Gio\VMs\long-live-10\vm\ll10-22h2.qcow2` becomes your reusable
+  base image - copy it to a safe location for future imports.
+
+### Recommended workflow
+
+```powershell
+# One-time: build or import a base image
+yarn vm:import -- -Image "C:\images\Win10_22H2.qcow2"
+
+# Every test cycle:
+yarn vm:start
+yarn vm:smoke          # verify WinRM
+yarn motw:test-cycle   # validate mitigation
+yarn vm:revert         # restore baseline
+```
+
 `vm:setup` downloads the official ISO, builds the unattended install media, creates
 the disk, and starts the installation. The other commands assume that setup has
 completed.

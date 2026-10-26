@@ -7,7 +7,19 @@ param(
 $ErrorActionPreference = "Stop"
 
 $qemu = if ($env:LL10_QEMU) { $env:LL10_QEMU } else { Join-Path $env:USERPROFILE "scoop\apps\qemu\current\qemu-system-x86_64.exe" }
-$disk = Join-Path $VmDir "vm\ll10-22h2.qcow2"
+# Auto-detect disk format (qcow2 preferred, VHD fallback)
+$qcow2Disk = Join-Path $VmDir "vm\ll10-22h2.qcow2"
+$vhdDisk = Join-Path $VmDir "vm\ll10-22h2.vhd"
+if (Test-Path $qcow2Disk) {
+    $disk = $qcow2Disk
+    $diskFormat = "qcow2"
+} elseif (Test-Path $vhdDisk) {
+    $disk = $vhdDisk
+    $diskFormat = "vpc"
+} else {
+    $disk = $qcow2Disk
+    $diskFormat = "qcow2"
+}
 $iso = Join-Path $VmDir "iso\Win10_22H2_English_x64.iso"
 $unattend = Join-Path $VmDir "unattend\autounattend.iso"
 
@@ -27,7 +39,7 @@ $args = @(
     "-smp", "2,sockets=1,cores=2,threads=1",
     "-m", "4096",
     "-rtc", "base=localtime,clock=host",
-    "-drive", "file=$disk,format=qcow2,if=ide,index=0"
+    "-drive", "file=$disk,format=$diskFormat,if=ide,index=0,cache=writethrough,aio=threads"
 )
 
 if (Test-Path $iso) {

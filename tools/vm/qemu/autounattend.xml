@@ -98,6 +98,14 @@
                     <Order>3</Order>
                     <Path>reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f</Path>
                 </RunSynchronousCommand>
+                <RunSynchronousCommand wcm:action="add">
+                    <Order>4</Order>
+                    <Path>reg add HKLM\SYSTEM\CurrentControlSet\Control\Network\NewNetworkWindowOff /t REG_DWORD /d 1 /f</Path>
+                </RunSynchronousCommand>
+                <RunSynchronousCommand wcm:action="add">
+                    <Order>5</Order>
+                    <Path>reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\OOBE /v DontOfferMSNNewsContent /t REG_DWORD /d 1 /f</Path>
+                </RunSynchronousCommand>
             </RunSynchronous>
         </component>
     </settings>
@@ -114,6 +122,7 @@
                 <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
                 <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
                 <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+                <SkipMachineOOBE>true</SkipMachineOOBE>
                 <NetworkLocation>Work</NetworkLocation>
                 <ProtectYourPC>3</ProtectYourPC>
             </OOBE>
@@ -144,7 +153,7 @@
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
                     <Order>1</Order>
-                    <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 15; Start-Transcript -Path C:\ll10-setup.log -Append; netsh advfirewall set allprofiles state off; Enable-PSRemoting -Force -SkipNetworkProfileCheck; Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true; Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true; Set-Service WinRM -StartupType Automatic; Start-Service WinRM; Set-LocalUser -Name ll10 -PasswordNeverExpires $true; Set-Service wuauserv -StartupType Disabled; Stop-Service wuauserv -Force; Stop-Transcript"</CommandLine>
+                    <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Transcript -Path C:\ll10-setup.log -Append; netsh advfirewall set allprofiles state off; Enable-PSRemoting -Force -SkipNetworkProfileCheck; Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true; Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true; Set-Service WinRM -StartupType Automatic; Start-Service WinRM; Set-LocalUser -Name ll10 -PasswordNeverExpires $true; Set-Service wuauserv -StartupType Disabled; Stop-Service wuauserv -Force; 'DONE' | Out-File C:\ll10-done.txt; Stop-Transcript"</CommandLine>
                     <Description>Configure Long Live 10 test VM</Description>
                     <RequiresUserInput>false</RequiresUserInput>
                 </SynchronousCommand>
