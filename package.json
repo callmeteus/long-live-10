@@ -17,10 +17,6 @@
         "vm:finalize": "powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Finalize-Vm.ps1",
         "vm:build-prebuilt": "powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Build-PrebuiltImage.ps1",
         "eos:suppress-prompts": "powershell -ExecutionPolicy Bypass -File tools/suppress-eos-prompts.ps1",
-        "motw:apply": "powershell -ExecutionPolicy Bypass -File tools/patches/cve-2026-96951/motw/enforce-motw.ps1 -Mode Apply",  # sub-component: registry only
-        "motw:verify": "powershell -ExecutionPolicy Bypass -File tools/patches/cve-2026-96951/motw/enforce-motw.ps1 -Mode Verify",
-        "motw:revert": "powershell -ExecutionPolicy Bypass -File tools/patches/cve-2026-96951/motw/enforce-motw.ps1 -Mode Revert",
-        "motw:test-cycle": "powershell -ExecutionPolicy Bypass -File tools/patches/cve-2026-96951/motw/Invoke-MotWTestCycle.ps1",
         "patch:verify": "powershell -ExecutionPolicy Bypass -File tools/patches/cve-2026-96951/motw/patch-cve-2026-96951.ps1 -Mode Verify",
         "patch:apply": "powershell -ExecutionPolicy Bypass -File tools/patches/cve-2026-96951/motw/patch-cve-2026-96951.ps1 -Mode Apply",
         "patch:revert": "powershell -ExecutionPolicy Bypass -File tools/patches/cve-2026-96951/motw/patch-cve-2026-96951.ps1 -Mode Revert",
