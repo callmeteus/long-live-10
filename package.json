@@ -11,6 +11,7 @@
         "vm:setup": "powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Setup-Vm.ps1",
         "vm:import": "powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Setup-Vm.ps1",
         "vm:start": "powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Start-Vm.ps1",
+        "vm:prepare": "powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Prepare-Guest.ps1",
         "vm:revert": "powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Revert-Vm.ps1",
         "vm:smoke": "powershell -ExecutionPolicy Bypass -File tools/vm/qemu/Invoke-SmokeTest.ps1",
         "vm:smoke:full": "powershell -ExecutionPolicy Bypass -File tools/vm/qemu/Invoke-FullSmokeTest.ps1",
