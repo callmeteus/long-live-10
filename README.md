@@ -4,7 +4,7 @@ Community-driven project to extend Windows 10 support after conventional support
 
 ## Status
 
-Versioned catalog contracts, the compatibility catalog, applicability and operation planning, the agent command line, signed release packaging, and the Flutter diagnostics and status screens are implemented. Unit and contract tests pass. The Hyper-V provider and base image guide are ready, but real VM validation is pending a prepared image. The CI and release workflows exist but have not run on GitHub Actions. See the [support matrix](docs/support-matrix.md) for supported, experimental, and out-of-scope capabilities, [ROADMAP.md](ROADMAP.md) for planned work, and `.stillmark/plans/` for the private execution plan.
+Versioned catalog contracts, the compatibility catalog, applicability and operation planning, the agent command line, signed release packaging, and the Flutter diagnostics and status screens are implemented. Unit and contract tests pass. The VirtualBox harness creates and provisions a disposable Windows 10 22H2 VM that boots auto-logged-in and reachable over WinRM without manual steps; see [VM testing](#vm-testing-virtualbox). Binary `shell32.dll` patch validation in that VM is still in progress. The CI and release workflows exist but have not run on GitHub Actions. See the [support matrix](docs/support-matrix.md) for supported, experimental, and out-of-scope capabilities, [ROADMAP.md](ROADMAP.md) for planned work, and `.stillmark/plans/` for the private execution plan.
 
 ## Goals
 
@@ -89,7 +89,86 @@ flutter build windows --release
 
 The release build installs `agent_ffi.dll` next to `long_live_10.exe`.
 
-Setup details live in [docs/development/](docs/development/). The Hyper-V test image is documented in [docs/vm/windows-10-22h2-base-image.md](docs/vm/windows-10-22h2-base-image.md).
+Setup details live in [docs/development/](docs/development/). The Hyper-V test image is documented in [docs/vm/windows-10-22h2-base-image.md](docs/vm/windows-10-22h2-base-image.md) and the VirtualBox harness in [docs/vm/windows-10-22h2-virtualbox.md](docs/vm/windows-10-22h2-virtualbox.md).
+
+## VM testing (VirtualBox)
+
+Patch and mitigation work is validated in a disposable Windows 10 22H2 x64 VM.
+The guest is provisioned **offline**: its virtual disk (VHD) is mounted on the
+host and the configuration is written directly into the offline registry hives.
+The VM therefore boots already logged in and reachable over WinRM, with no RDP
+session, no keyboard automation and no operator interaction.
+
+### Why offline provisioning
+
+Configuring the guest from inside a running session required an interactive
+login, was lost on every snapshot restore, and differed from machine to machine.
+`Prepare-Guest.ps1` makes the configuration part of the image instead. It is
+idempotent, detects the active control set, and shuts the VM down gracefully
+first so dirty registry hive logs cannot replay and discard the edits.
+
+### Commands
+
+| Command | What it does |
+| --- | --- |
+| `yarn vm:setup -- -BaseImage <image.vhd>` | Creates or re-creates the VM, stores the disk as VHD and provisions the guest |
+| `yarn vm:prepare` | Re-applies provisioning to an existing powered-off VM |
+| `yarn vm:start` | Boots the VM and waits until WinRM actually answers |
+| `yarn vm:smoke` | Runs a harmless command inside the guest |
+| `yarn vm:finalize` | Shuts down, re-provisions and records the `baseline` snapshot |
+| `yarn vm:revert` | Discards guest changes and returns to `baseline` |
+
+`yarn vm:start` waits for a real WS-Management handshake (`Test-WSMan`), not a
+TCP connection: VirtualBox NAT accepts TCP connections while the guest is still
+booting, which produces false positives.
+
+### What provisioning guarantees
+
+| Setting | Value | Effect |
+| --- | --- | --- |
+| `Services\WinRM` → `Start` | `2` (automatic) | WinRM starts at boot, no login required |
+| `Control\Lsa` → `LocalAccountTokenFilterPolicy` | `1` | Local admin account can authenticate remotely |
+| Firewall `DomainProfile` / `StandardProfile` / `PublicProfile` | `EnableFirewall = 0` | Forwarded ports are never filtered |
+| `Winlogon` → `AutoAdminLogon`, `DefaultUserName`, `DefaultPassword`, `ForceAutoLogon` | enabled | Console session logs in automatically |
+| `Winlogon` → `AutoLogonCount` | deleted | Auto-logon does not expire |
+| Startup folder and stale `RunOnce` entries | removed | No console windows flash at boot |
+
+Provisioning also writes `C:\ll10\provision.txt` inside the guest as a
+diagnostic marker.
+
+### Verified behaviour
+
+After `yarn vm:revert && yarn vm:start && yarn vm:smoke` on a clean baseline:
+
+```text
+user=LL10-TEST\ll10
+winrm=Running/Automatic
+startupItems=0
+consoleWindows=0
+console  ll10  1  Active
+ll10-smoke
+Microsoft Windows 10 Pro
+```
+
+First WinRM answer takes about 2.5-3 minutes on a 4 GB / 2 vCPU guest; the smoke
+test then completes in a few seconds. `vm:start` allows up to 300 seconds.
+
+### Credentials and ports
+
+| Item | Value |
+| --- | --- |
+| Account | `ll10` / `Ll10Test!2026` (local administrator) |
+| WinRM | `http://127.0.0.1:55985` (NAT → guest 5985) |
+| RDP | `127.0.0.1:53389` (NAT → guest 3389, only if needed) |
+| VM name | `ll10-22h2` |
+
+> **Known gap.** `yarn patch:apply` currently targets the local machine's
+> `C:\Windows\System32\shell32.dll`. Patches must be executed inside the VM over
+> WinRM before this command is considered safe to run. Until then, do not run
+> `patch:*` on a development host.
+
+Full details, troubleshooting and recovery notes are in
+[docs/vm/windows-10-22h2-virtualbox.md](docs/vm/windows-10-22h2-virtualbox.md).
 
 ## Planning
 
