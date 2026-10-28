@@ -3,6 +3,10 @@ use catalog_schema::{Architecture, Artifact, PatchEntry, Validate};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+pub mod manifest;
+
+pub use manifest::*;
+
 /// Permitted operation types for the patch engine.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

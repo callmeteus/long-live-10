@@ -1,0 +1,18 @@
+﻿[package]
+name = "patch-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+patch-core = { path = "../patch-core" }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+sha2 = "0.10"
+# windows-specific deps (optional, gated by cfg)
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"

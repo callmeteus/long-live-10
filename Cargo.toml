@@ -9,6 +9,8 @@ members = [
     "packages/compatibility-engine",
     "packages/compatibility-catalog",
     "packages/vm-harness",
+    "packages/patch-runtime",
+    "packages/patch-helper",
     "packages/release-tools",
 ]
 resolver = "2"
@@ -20,6 +22,7 @@ license = "MIT"
 authors = ["Long Live 10 Community"]
 
 [workspace.dependencies]
+serde_norway = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 anyhow = "1.0"

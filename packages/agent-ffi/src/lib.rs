@@ -12,6 +12,7 @@
 //! - `1`: `ll10_abi_version`, `ll10_diagnostics_json`, `ll10_free_string`.
 
 use std::ffi::{c_char, CString};
+use std::path::PathBuf;
 
 /// Version of the C ABI, incremented on any breaking change.
 pub const ABI_VERSION: u32 = 1;
@@ -30,6 +31,53 @@ pub extern "C" fn ll10_abi_version() -> u32 {
 pub extern "C" fn ll10_diagnostics_json() -> *mut c_char {
     match agent::diagnostics().to_json() {
         Ok(json) => into_c_string(json),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Returns patches list as JSON.
+#[no_mangle]
+pub extern "C" fn ll10_patches_list_json(patches_dir: *const c_char) -> *mut c_char {
+    let dir = if patches_dir.is_null() {
+        PathBuf::from("packages/patches")
+    } else {
+        let cstr = unsafe { std::ffi::CStr::from_ptr(patches_dir) };
+        PathBuf::from(cstr.to_string_lossy().to_string())
+    };
+    // Use patch-core to list manifests
+    let mut ids = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() && entry.path().join("patch.yml").is_file() {
+                ids.push(entry.file_name().to_string_lossy().to_string());
+            }
+        }
+    }
+    ids.sort();
+    match serde_json::to_string(&ids) {
+        Ok(json) => into_c_string(json),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Returns a single patch manifest as JSON.
+#[no_mangle]
+pub extern "C" fn ll10_patches_show_json(patches_dir: *const c_char, id: *const c_char) -> *mut c_char {
+    if id.is_null() { return std::ptr::null_mut(); }
+    let cstr = unsafe { std::ffi::CStr::from_ptr(id) };
+    let patch_id = cstr.to_string_lossy().to_string();
+    let dir = if patches_dir.is_null() {
+        PathBuf::from("packages/patches")
+    } else {
+        let cstr = unsafe { std::ffi::CStr::from_ptr(patches_dir) };
+        PathBuf::from(cstr.to_string_lossy().to_string())
+    };
+    let path = dir.join(&patch_id).join("patch.yml");
+    match patch_core::PatchManifest::load_from_path(&path) {
+        Ok(m) => match serde_json::to_string(&m) {
+            Ok(json) => into_c_string(json),
+            Err(_) => std::ptr::null_mut(),
+        },
         Err(_) => std::ptr::null_mut(),
     }
 }

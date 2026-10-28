@@ -3,6 +3,7 @@ import "package:flutter/material.dart";
 import "../ffi/agent_client.dart";
 import "../i18n/app_localizations.dart";
 import "../../modules/diagnostics/diagnostics_screen.dart";
+import "../../modules/patches/patches_screen.dart";
 import "../../modules/status/status_screen.dart";
 
 /// Application shell with status and diagnostics pages.
@@ -25,6 +26,7 @@ class _AppShellState extends State<AppShell> {
         final pages = [
             StatusScreen(client: widget.client),
             DiagnosticsScreen(client: widget.client),
+            const PatchesScreen(),
         ];
 
         final destinations = [
@@ -37,6 +39,11 @@ class _AppShellState extends State<AppShell> {
                 icon: Icons.monitor_heart_outlined,
                 selectedIcon: Icons.monitor_heart,
                 label: strings.common.diagnosticsTab,
+            ),
+            _Destination(
+                icon: Icons.build_outlined,
+                selectedIcon: Icons.build,
+                label: "Patches",
             ),
         ];
 

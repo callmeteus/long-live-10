@@ -11,4 +11,5 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 agent = { path = "../agent" }
+patch-core = { path = "../patch-core" }
 serde_json = { workspace = true }
