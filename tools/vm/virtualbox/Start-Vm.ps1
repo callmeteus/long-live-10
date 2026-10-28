@@ -1,71 +1,209 @@
-# Start-Vm.ps1 (VirtualBox) - Starts the VM and waits for WinRM
+# Start-Vm.ps1 (VirtualBox) - Starts the VM and waits until it is actually usable.
+#
+# Design notes (why this looks the way it does):
+#
+#   * Headless by default. Starting a GUI window steals focus from the operator
+#     and is never needed for automated work. Pass -Gui only when a human wants
+#     to watch the console.
+#   * The guest is usable only when a real WinRM login succeeds. A TCP connect
+#     is meaningless here: VirtualBox NAT accepts the connection while the guest
+#     is still booting, which produced false "ready" results in the past.
+#   * Cold boot on this image takes several minutes (first logon, Defender,
+#     OneDrive first-run). The default timeout is therefore generous and can be
+#     raised with -TimeoutSeconds or LL10_VM_TIMEOUT.
+#   * Booting disk-first removes the floppy/DVD probe delay and makes boot
+#     ordering deterministic across machines.
+#   * The script is idempotent: run it on a VM that is already up and it returns
+#     as soon as the login check passes.
+
+[CmdletBinding()]
 param(
     [string]$VmName = "ll10-22h2",
 
-    [switch]$Headless,
+    # Show the VirtualBox console window. Off by default.
+    [switch]$Gui,
 
-    # Do not return until WinRM answers, so callers can run commands right away.
-    [bool]$WaitForWinRm = $true,
+    # How long to wait for a successful WinRM login after power-on.
+    [int]$TimeoutSeconds = $(if ($env:LL10_VM_TIMEOUT) { [int]$env:LL10_VM_TIMEOUT } else { 900 }),
 
-    [int]$TimeoutSeconds = 300,
+    [int]$WinRmPort = 55985,
 
-    [int]$WinRmPort = 55985
+    [string]$UserName = "ll10",
+
+    [string]$Password = "Ll10Test!2026",
+
+    # Return immediately after power-on instead of waiting for WinRM.
+    # (A [bool] parameter cannot be passed from `powershell -File`, so this is
+    # a switch: -NoWait.)
+    [switch]$NoWait
 )
 
 $ErrorActionPreference = "Stop"
 
 $vb = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
-if (-not (Test-Path $vb)) { throw "VirtualBox not found." }
+if (-not (Test-Path $vb)) { throw "VirtualBox not found at $vb." }
 
-# Check if VM exists
-$vmList = & $vb list vms 2>&1
-if ($vmList -notmatch $VmName) {
-    throw "VM '$VmName' not found. Run yarn vm:setup first."
+# ---------------------------------------------------------------------------
+# Native helper: VBoxManage writes to stderr even on success, which would
+# terminate the script under $ErrorActionPreference = "Stop".
+# ---------------------------------------------------------------------------
+function Invoke-VBox {
+    param([string[]]$Arguments)
+
+    $stdout = [System.IO.Path]::GetTempFileName()
+    $stderr = [System.IO.Path]::GetTempFileName()
+    try {
+        $commandLine = ($Arguments | ForEach-Object {
+            if ($_ -match '\s') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+        }) -join ' '
+
+        $proc = Start-Process -FilePath $vb -ArgumentList $commandLine -Wait -PassThru `
+            -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+
+        $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) +
+                (Get-Content $stderr -Raw -ErrorAction SilentlyContinue)
+        return [pscustomobject]@{
+            ExitCode = $proc.ExitCode
+            Output   = ($text | Out-String).Trim()
+        }
+    }
+    finally {
+        Remove-Item $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    }
 }
 
-function Test-WinRm {
-    param([int]$Port)
-    # A TCP connect is not enough: VirtualBox NAT accepts the connection even
-    # while the guest is still booting. Test-WSMan performs a real
-    # WS-Management handshake, so it only succeeds once the listener is up.
+function Get-VmState {
+    # 'showvminfo' can fail transiently while VBoxSVC holds the machine lock
+    # during a power transition; retry instead of reporting the VM as missing.
+    for ($attempt = 0; $attempt -lt 4; $attempt++) {
+        $result = Invoke-VBox -Arguments @("showvminfo", $VmName, "--machinereadable")
+        if ($result.ExitCode -eq 0) {
+            $line = ($result.Output -split "`r?`n") | Where-Object { $_ -match '^VMState=' } | Select-Object -First 1
+            if ($line) { return ($line -replace '^VMState="', '' -replace '"$', '') }
+        }
+        Start-Sleep -Milliseconds 750
+    }
+    return $null
+}
+
+$credential = New-Object System.Management.Automation.PSCredential(
+    $UserName,
+    (ConvertTo-SecureString $Password -AsPlainText -Force)
+)
+
+function Test-WinRmHandshake {
+    # Cheap check: is the WS-Management listener answering at all?
     try {
-        $result = Test-WSMan -ComputerName "127.0.0.1" -Port $Port -ErrorAction Stop
-        return [bool]$result
+        $null = Test-WSMan -ComputerName "127.0.0.1" -Port $WinRmPort -ErrorAction Stop
+        return $true
     } catch {
         return $false
     }
 }
 
-# Check if already running
-$running = & $vb list runningvms 2>&1
-if ($running -match $VmName) {
+function Test-WinRmLogin {
+    # Authoritative check: can we actually authenticate and run a command?
+    try {
+        $session = New-PSSession -ComputerName "127.0.0.1" -Port $WinRmPort `
+            -Credential $credential -Authentication Negotiate -ErrorAction Stop
+        try {
+            $null = Invoke-Command -Session $session -ScriptBlock { $env:COMPUTERNAME } -ErrorAction Stop
+        }
+        finally {
+            Remove-PSSession $session -ErrorAction SilentlyContinue
+        }
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Ensure the VM exists
+# ---------------------------------------------------------------------------
+if ($null -eq (Get-VmState)) {
+    throw "VM '$VmName' not found. Run 'yarn vm:setup' first."
+}
+
+# ---------------------------------------------------------------------------
+# Boot ordering: disk first. Avoids floppy/DVD probing and is reproducible.
+# ---------------------------------------------------------------------------
+Invoke-VBox -Arguments @(
+    "modifyvm", $VmName,
+    "--boot1", "disk", "--boot2", "dvd", "--boot3", "none", "--boot4", "none"
+) | Out-Null
+
+# ---------------------------------------------------------------------------
+# Power on when needed
+# ---------------------------------------------------------------------------
+$state = Get-VmState
+$startedAt = $null
+
+if ($state -in @("running")) {
     Write-Host "VM '$VmName' is already running."
 } else {
-    Write-Host "Starting VM: $VmName"
-    if ($Headless) {
-        & $vb startvm $VmName --type headless
-    } else {
-        & $vb startvm $VmName --type gui
+    if ($state -in @("saved")) {
+        Write-Host "Discarding saved state of '$VmName'..."
+        Invoke-VBox -Arguments @("discardstate", $VmName) | Out-Null
     }
-    if ($LASTEXITCODE -ne 0) { throw "Failed to start VM '$VmName'." }
-    Write-Host "VM started."
+
+    Write-Host "Starting VM '$VmName' ($(if ($Gui) { 'gui' } else { 'headless' }))..."
+    $startedAt = Get-Date
+
+    $startArgs = @("startvm", $VmName)
+    if (-not $Gui) { $startArgs += @("--type", "headless") }
+
+    $result = Invoke-VBox -Arguments $startArgs
+    if ($result.ExitCode -ne 0) {
+        throw "Failed to start VM '$VmName': $($result.Output)"
+    }
 }
 
 Write-Host "WinRM: http://127.0.0.1:$WinRmPort"
-Write-Host "RDP:   127.0.0.1:53389"
+Write-Host "RDP:   http://127.0.0.1:53389 (not started by this script)"
 
-if (-not $WaitForWinRm) { return }
+if ($NoWait) { return }
 
-Write-Host "Waiting for WinRM (up to $TimeoutSeconds s)..."
+# ---------------------------------------------------------------------------
+# Wait for a real login
+# ---------------------------------------------------------------------------
+Write-Host "Waiting for WinRM login (up to $TimeoutSeconds s)..."
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+$handshake = $false
+
 while ((Get-Date) -lt $deadline) {
-    if (Test-WinRm -Port $WinRmPort) {
-        # TCP is up; give the WS-Management listener a moment to accept auth.
-        Start-Sleep -Seconds 3
-        Write-Host "WinRM is ready." -ForegroundColor Green
+    if (-not $handshake) {
+        $handshake = Test-WinRmHandshake
+        if (-not $handshake) {
+            Start-Sleep -Seconds 5
+            continue
+        }
+        Write-Host "  WinRM listener is up; verifying login..."
+    }
+
+    if (Test-WinRmLogin) {
+        $elapsed = if ($startedAt) { [int]((Get-Date) - $startedAt).TotalSeconds } else { 0 }
+        if ($elapsed -gt 0) {
+            Write-Host "WinRM login OK after ${elapsed}s." -ForegroundColor Green
+        } else {
+            Write-Host "WinRM login OK." -ForegroundColor Green
+        }
         return
     }
+
     Start-Sleep -Seconds 5
 }
 
-throw "WinRM did not answer on 127.0.0.1:$WinRmPort within $TimeoutSeconds s. Run 'yarn vm:prepare' to provision the guest disk."
+$elapsed = if ($startedAt) { [int]((Get-Date) - $startedAt).TotalSeconds } else { 0 }
+$state = Get-VmState
+throw @"
+WinRM login did not succeed within ${TimeoutSeconds}s (VM state: $state, waited: ${elapsed}s).
+
+What to check, in order:
+  1. The guest may still be booting. Retry with a longer budget:
+       powershell -ExecutionPolicy Bypass -File tools/vm/virtualbox/Start-Vm.ps1 -TimeoutSeconds 1200
+  2. The guest disk may not be provisioned. Re-apply the known-good offline config:
+       yarn vm:prepare
+  3. Confirm the forward exists:
+       VBoxManage showvminfo $VmName | findstr 55985
+"@

@@ -61,6 +61,38 @@ function Invoke-PrepareGuest {
     if ($LASTEXITCODE -ne 0) { throw "Guest provisioning failed." }
 }
 
+function Invoke-VBoxQuiet {
+    # VBoxManage prints progress to stderr even on success; with
+    # $ErrorActionPreference = "Stop" that becomes a terminating error.
+    param([string[]]$Arguments)
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $vb @Arguments 2>&1 | Out-String
+        return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output }
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+# Records a powered-off "baseline" snapshot so 'yarn vm:revert' has a
+# deterministic reset point. Safe to re-run: an existing baseline is replaced.
+function Save-BaselineSnapshot {
+    param([string]$Name, [string]$SnapshotName = "baseline")
+
+    $existing = Invoke-VBoxQuiet -Arguments @("snapshot", $Name, "list")
+    if ($existing.Output -match "Name:\s+$([regex]::Escape($SnapshotName))\b") {
+        Write-Host "Replacing snapshot '$SnapshotName'..."
+        $null = Invoke-VBoxQuiet -Arguments @("snapshot", $Name, "delete", $SnapshotName)
+    }
+
+    Write-Host "Taking snapshot '$SnapshotName'..."
+    $result = Invoke-VBoxQuiet -Arguments @("snapshot", $Name, "take", $SnapshotName, "--description", "Provisioned guest, powered off")
+    if ($result.ExitCode -ne 0) { throw "Failed to take snapshot '$SnapshotName': $($result.Output)" }
+}
+
 # ---------------------------------------------------------------------------
 # Pre-built image path
 # ---------------------------------------------------------------------------
@@ -93,11 +125,14 @@ if ($BaseImage -ne "") {
         if ($LASTEXITCODE -ne 0) { throw "OVF/OVA import failed." }
         & $vb modifyvm $VmName --nic1 nat --nictype1 82540EM
         & $vb modifyvm $VmName --natpf1 "winrm,tcp,,55985,,5985" --natpf1 "rdp,tcp,,53389,,3389"
+        & $vb modifyvm $VmName --boot1 disk --boot2 dvd --boot3 none --boot4 none
         Convert-VmDiskToVhd -Name $VmName -Target $diskPath
     } else {
         & $vb createvm --name $VmName --ostype "Windows10_64" --register --basefolder $vmPath
         & $vb modifyvm $VmName --memory 4096 --cpus 2 --vram 128 --nic1 nat --nictype1 82540EM
         & $vb modifyvm $VmName --natpf1 "winrm,tcp,,55985,,5985" --natpf1 "rdp,tcp,,53389,,3389"
+        # Disk-first boot: skips floppy/DVD probing and makes boot deterministic.
+        & $vb modifyvm $VmName --boot1 disk --boot2 dvd --boot3 none --boot4 none
 
         if ($ext -eq ".vhd") {
             Copy-Item $sourceImage $diskPath -Force
@@ -117,6 +152,7 @@ if ($BaseImage -ne "") {
     & $vb modifyvm $VmName --vrde on --vrdeport 53389 --vrdeauthtype null
 
     Invoke-PrepareGuest -Name $VmName -Disk $diskPath
+    Save-BaselineSnapshot -Name $VmName
 
     @"
 VM: $VmName

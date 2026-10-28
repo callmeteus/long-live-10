@@ -38,7 +38,8 @@ yarn vm:setup -- -BaseImage "D:\images\Win10_22H2.vhd"
 # 2. Re-apply provisioning only (disk must be attached and the VM powered off).
 yarn vm:prepare
 
-# 3. Boot and wait until WinRM actually answers (default timeout: 300 s).
+# 3. Boot headless and wait until a real WinRM login succeeds
+#    (default budget: 900 s; override with -TimeoutSeconds or LL10_VM_TIMEOUT).
 yarn vm:start
 
 # 4. Run a harmless command inside the guest.
@@ -48,15 +49,25 @@ yarn vm:smoke
 yarn vm:finalize
 
 # 6. Discard all guest changes and return to the baseline.
+#    If the snapshot is missing, this rebuilds from base-image.vhd instead.
 yarn vm:revert
 ```
 
-`yarn vm:start` performs a real WS-Management handshake (`Test-WSMan`) instead
-of a TCP connect: VirtualBox NAT accepts TCP connections even while the guest
-is still booting, so a TCP probe reports false positives.
+`yarn vm:start` performs a real WS-Management **login** (PSSession plus a
+remote command), not a TCP connect. VirtualBox NAT accepts TCP connections
+while the guest is still booting, so a TCP probe reports false positives, and
+`Test-WSMan` alone can pass before authentication is ready.
 
-Expected timing on a 4 vCPU / 4 GB guest: first WinRM answer ~2.5-3 minutes
-after `vm:start`; `vm:smoke` then takes a few seconds.
+The VM starts **headless**; no console window or RDP session is opened. Pass
+`-Gui` to `Start-Vm.ps1` only when a human wants to watch the console.
+
+Expected timing on the standard 4 GB / 2 vCPU guest: cold boot to a working
+WinRM login is ~190-330 s depending on host load. The 900 s default exists
+because the very first boot after a fresh import can be slower.
+
+`vm:setup` records a `baseline` snapshot after provisioning. That makes
+`vm:revert` an instant, exact reset. When the snapshot is absent, `vm:revert`
+rebuilds the VM from `base-image.vhd` next to the guest disk.
 
 ## What provisioning guarantees
 
@@ -102,9 +113,13 @@ query session
 
 ## Troubleshooting
 
-**`WinRM did not answer ... within 300 s`**
-The guest did not finish booting, or it was not provisioned. Run
-`yarn vm:prepare` (the VM is powered off automatically), then `yarn vm:start`.
+**`WinRM login did not succeed within ...`**
+The guest did not finish booting, or it was not provisioned. Two usual causes:
+
+- Not enough time. Cold boot is ~190-330 s; retry with a larger budget:
+  `yarn vm:start -- -TimeoutSeconds 1200`.
+- The guest disk lost its provisioning. Run `yarn vm:prepare` (it powers the VM
+  off first), then `yarn vm:start`.
 
 **`Guest disk is not a VHD`**
 Offline provisioning needs a mountable format. Recreate the VM with
@@ -120,3 +135,15 @@ The registry hive was dirty (the VM was killed instead of shut down) and
 Windows replayed its transaction logs. `Prepare-Guest.ps1` always requests a
 graceful ACPI shutdown before mounting; let it finish instead of powering the
 VM off by force.
+
+**The VM looks "hung": black screen, frozen clock, no WinRM**
+Check whether the guest is actually spinning or merely slow:
+
+```powershell
+Get-Process VBoxHeadless | Select-Object Id, CPU, @{n='WS_MB';e={[math]::Round($_.WorkingSet64/1MB)}}
+```
+
+A high CPU number that keeps growing means Windows is busy (usually chkdsk after
+an unclean shutdown, or first-boot work); wait it out. A frozen clock with no
+CPU growth means a genuine hang; reset with `yarn vm:revert` (snapshot) or
+`yarn vm:setup` (rebuild).
