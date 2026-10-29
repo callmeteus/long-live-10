@@ -1,5 +1,10 @@
 ﻿# Patch Authoring
 
+Why the engine works the way it does - including the approaches that failed and
+the exact symptoms they leave behind - is in
+[`field-notes.md`](field-notes.md). Read it before writing a patch that replaces
+a system file.
+
 ## Layout
 ```npackages/patches/<id>/
   patch.yml      # manifest

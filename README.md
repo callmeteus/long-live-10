@@ -53,6 +53,10 @@ yarn validate:catalog  # validate patch and compatibility catalogs
 yarn test:ci    # test changed-file detection for CI
 ```
 
+Patch internals, the rejected approaches and the failure catalogue are in
+[`docs/patches/field-notes.md`](docs/patches/field-notes.md); agent conventions
+are in [`AGENTS.md`](AGENTS.md).
+
 Run one package only:
 
 ```powershell
