@@ -6,6 +6,7 @@ All patches live here, one folder per patch id. Each patch is self-contained wit
 | Patch | CVE | Severity | Status | Notes |
 |---|---|---|---|---|
 | [cve-2026-96951](cve-2026-96951/README.md) | CVE-2026-96951 | High | Active | Windows Shell MotW bypass mitigation (System32 + registry; SysWOW64 pending artifact) |
+| [cve-2026-20816](cve-2026-20816/README.md) | CVE-2026-20816 | High | Experimental | Windows Installer elevation: disables AlwaysInstallElevated at its source in msi.dll |
 
 ## Rules
 - Manifests must be valid YAML and pass ll10-agent patches validate.

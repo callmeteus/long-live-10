@@ -22,7 +22,7 @@ fn accepts_the_initial_production_entries() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success(), "stdout: {stdout}");
-    assert!(stdout.contains("8 file(s), 0 failure(s)"));
+    assert!(stdout.contains("9 file(s), 0 failure(s)"));
 }
 
 #[test]
