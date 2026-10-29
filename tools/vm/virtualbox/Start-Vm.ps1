@@ -1,4 +1,4 @@
-# Start-Vm.ps1 (VirtualBox) - Starts the VM and waits until it is actually usable.
+﻿# Start-Vm.ps1 (VirtualBox) - Starts the VM and waits until it is actually usable.
 #
 # Design notes (why this looks the way it does):
 #
@@ -104,8 +104,11 @@ function Test-WinRmHandshake {
 function Test-WinRmLogin {
     # Authoritative check: can we actually authenticate and run a command?
     try {
+        # A busy guest can take a long time to create the remote shell even when
+        # the listener already answers, so use generous client timeouts.
+        $options = New-PSSessionOption -OpenTimeout 120000 -OperationTimeout 120000
         $session = New-PSSession -ComputerName "127.0.0.1" -Port $WinRmPort `
-            -Credential $credential -Authentication Negotiate -ErrorAction Stop
+            -Credential $credential -Authentication Negotiate -SessionOption $options -ErrorAction Stop
         try {
             $null = Invoke-Command -Session $session -ScriptBlock { $env:COMPUTERNAME } -ErrorAction Stop
         }
@@ -207,3 +210,4 @@ What to check, in order:
   3. Confirm the forward exists:
        VBoxManage showvminfo $VmName | findstr 55985
 "@
+

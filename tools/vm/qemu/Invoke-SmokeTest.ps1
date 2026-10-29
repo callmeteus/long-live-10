@@ -15,7 +15,8 @@ $ErrorActionPreference = "Stop"
 
 $secure = ConvertTo-SecureString $Password -AsPlainText -Force
 $credential = New-Object System.Management.Automation.PSCredential($UserName, $secure)
-$sessionOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
+$sessionOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck `
+    -OpenTimeout 120000 -OperationTimeout 120000
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $session = $null
