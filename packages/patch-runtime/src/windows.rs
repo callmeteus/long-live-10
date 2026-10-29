@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[cfg(windows)]
+/// Identifier shared by pending.xml and the COMPONENTS registry value.
+const PENDING_XML_IDENTIFIER: &str = "916ae75edb30da0146730000dc1be027";
+
 pub struct WindowsBackend {
     pub journal_dir: PathBuf,
 }
@@ -86,126 +89,35 @@ impl super::SystemBackend for WindowsBackend {
     fn replace_file(&self, source: &str, dest: &str) -> Result<()> {
         let source = expand_env(source);
         let dest = expand_env(dest);
-        // Try normal copy first
+
+        // Fast path: the file is not in use and the ACL already allows us.
         if std::fs::copy(&source, &dest).is_ok() {
             return Ok(());
         }
-        // WRP-protected: take ownership, grant access, then use MoveFileEx for pending rename
-        let _ = std::process::Command::new("takeown")
-            .args(["/f", &dest, "/a"])
-            .output();
-        let _ = std::process::Command::new("icacls")
-            .args([&dest, "/grant", "administrators:F"])
-            .output();
-        // Use MoveFileEx with DELAY_UNTIL_REBOOT
-        use std::ffi::OsStr;
-        use std::os::windows::ffi::OsStrExt;
-        #[link(name = "kernel32")]
-        extern "system" {
-            fn MoveFileExW(lpExistingFileName: *const u16, lpNewFileName: *const u16, dwFlags: u32) -> i32;
-        }
-        const MOVEFILE_REPLACE_EXISTING: u32 = 0x00000001;
-        const MOVEFILE_DELAY_UNTIL_REBOOT: u32 = 0x00000004;
-        let src: Vec<u16> = OsStr::new(&source).encode_wide().chain(std::iter::once(0)).collect();
-        let dst: Vec<u16> = OsStr::new(&dest).encode_wide().chain(std::iter::once(0)).collect();
-        let result = unsafe {
-            MoveFileExW(src.as_ptr(), dst.as_ptr(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_DELAY_UNTIL_REBOOT)
-        };
-        if result == 0 {
-            return Err(anyhow::anyhow!("MoveFileEx failed: {}", std::io::Error::last_os_error()));
-        }
-        Ok(())
+
+        // Windows prevents overwriting a mapped image, but it allows renaming it
+        // and then creating a new file with the original name. This is the
+        // documented procedure for updating a DLL that is in use, and it is what
+        // makes replacing shell32.dll possible without a reboot-time hack.
+        replace_in_use(&source, &dest)
     }
 
     fn restore_file(&self, backup: &str, dest: &str) -> Result<()> {
         let backup = expand_env(backup);
         let dest = expand_env(dest);
+
         if std::fs::copy(&backup, &dest).is_ok() {
             return Ok(());
         }
-        crate::trusted_installer::replace_file_trusted(&backup, &dest)
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(())
+
+        replace_in_use(&backup, &dest)
     }
 
     fn schedule_rename(&self, source: &str, dest: &str) -> Result<()> {
-        let source = expand_env(source);
-        let dest = expand_env(dest);
-        let nt_source = format!("\\??\\{}", source);
-        let nt_dest = format!("\\??\\{}", dest);
-
-        // Create pending.xml using line-by-line construction to avoid format string issues
-        let mut xml = String::new();
-        xml.push_str("<?xml version='1.0' encoding='utf-8'?>\n\n");
-        xml.push_str("<PendingTransaction Version=\"3.1\" WcpVersion=\"10.0.22621.2567 (WinBuild.160101.0800)\" Identifier=\"916ae75edb30da0146730000dc1be027\">\n");
-        xml.push_str("\t<Transactions>\n");
-        xml.push_str("\t</Transactions>\n");
-        xml.push_str("\t<ChangeList>\n");
-        xml.push_str("\t</ChangeList>\n");
-        xml.push_str("\t<POQ postAction=\"reboot\">\n");
-        xml.push_str(&format!("\t\t<HardlinkFile source=\"{}\" destination=\"{}\"/>\n", nt_source, nt_dest));
-        xml.push_str("\t</POQ>\n");
-        xml.push_str("\t<POQ>\n");
-        xml.push_str("\t</POQ>\n");
-        xml.push_str("\t<InstallerQueue Length=\"0x00000000\">\n");
-        xml.push_str("\t</InstallerQueue>\n");
-        xml.push_str("\t<RollbackInformation>\n");
-        xml.push_str("\t\t<AdminHints>\n");
-        xml.push_str("\t\t</AdminHints>\n");
-        xml.push_str("\t</RollbackInformation>\n");
-        xml.push_str("</PendingTransaction>");
-
-        let pending_path = "C:\\\\Windows\\\\WinSxS\\\\pending.xml";
-        std::fs::write(&pending_path, &xml)
-            .map_err(|e| anyhow::anyhow!("failed to write pending.xml: {}", e))?;
-
-        // Set TrustedInstaller to auto-start
-        let _ = std::process::Command::new("sc")
-            .args(["config", "TrustedInstaller", "start=", "auto"])
-            .output();
-
-        // Set PoqexecCmdline registry value (REG_MULTI_SZ)
-        let hklm = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE);
-        let (key, _) = hklm.create_subkey(r"SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide\Configuration")?;
-        let poqexec_cmd = format!("C:\\Windows\\System32\\poqexec.exe /display_progress \\SystemRoot\\WinSxS\\pending.xml");
-        key.set_value("PoqexecCmdline", &vec![poqexec_cmd])
-            .map_err(|e| anyhow::anyhow!("failed to set PoqexecCmdline: {}", e))?;
-
-        // Set PendingXmlIdentifier in COMPONENTS hive (REG_BINARY, UTF-16)
-        // Use reg.exe to set it (runs as admin, may need TrustedInstaller)
-        let identifier = "916ae75edb30da0146730000dc1be027";
-        let mut bytes = Vec::new();
-        for c in identifier.chars() {
-            bytes.push(c as u8);
-            bytes.push(0);
-        }
-        bytes.push(0);
-        bytes.push(0);
-        // Write bytes to a file and use reg.exe import
-        let hex_str: String = bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("");
-        let reg_content = format!(
-            "Windows Registry Editor Version 5.00\n\n[HKEY_LOCAL_MACHINE\\COMPONENTS]\n\"PendingXmlIdentifier\"=hex:{}",
-            hex_str
-        );
-        let reg_file = "C:\\\\Windows\\\\Temp\\\\pending_id.reg";
-        std::fs::write(&reg_file, &reg_content)
-            .map_err(|e| anyhow::anyhow!("failed to write reg file: {}", e))?;
-        let _ = std::process::Command::new("reg")
-            .args(["import", &reg_file])
-            .output();
-        // Also try via winreg
-        let components_key = hklm.open_subkey("COMPONENTS");
-        if let Ok(key) = components_key {
-            use winreg::RegValue;
-            let raw = winreg::RegValue {
-                vtype: winreg::enums::RegType::REG_BINARY,
-                bytes: bytes.clone(),
-            };
-            let _ = key.set_raw_value("PendingXmlIdentifier", &raw);
-        }
-        let _ = std::fs::remove_file(&reg_file);
-
-        Ok(())
+        // Kept for manifests that still ask for a reboot-time replacement. The
+        // in-use rename installs the new file immediately, so there is nothing
+        // to defer.
+        self.replace_file(source, dest)
     }
 
     fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> {
@@ -313,4 +225,76 @@ fn expand_env(s: &str) -> String {
         result = result.replace("%WINDIR%", &systemroot);
     }
     result
+}
+
+// ---------------------------------------------------------------------------
+// In-use file replacement
+// ---------------------------------------------------------------------------
+
+#[cfg(windows)]
+fn to_wide(value: &str) -> Vec<u16> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    OsStr::new(value).encode_wide().chain(std::iter::once(0)).collect()
+}
+
+#[cfg(windows)]
+fn take_ownership(path: &str) {
+    // WRP is enforced with an ACL owned by TrustedInstaller, so ownership has to
+    // move first. The Administrators group is targeted by SID because its name
+    // is localized ("Administradores" on pt-BR, "Administratoren" on de-DE).
+    let _ = std::process::Command::new("takeown")
+        .args(["/f", path, "/a"])
+        .output();
+    let _ = std::process::Command::new("icacls")
+        .args([path, "/grant", "*S-1-5-32-544:F"])
+        .output();
+}
+
+#[cfg(windows)]
+fn schedule_delete_at_reboot(path: &str) {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn MoveFileExW(existing: *const u16, new_name: *const u16, flags: u32) -> i32;
+    }
+    const MOVEFILE_DELAY_UNTIL_REBOOT: u32 = 0x0000_0004;
+
+    let wide = to_wide(path);
+    // A null destination with DELAY_UNTIL_REBOOT means "delete at next boot".
+    unsafe {
+        MoveFileExW(wide.as_ptr(), std::ptr::null(), MOVEFILE_DELAY_UNTIL_REBOOT);
+    }
+}
+
+#[cfg(windows)]
+fn replace_in_use(source: &str, dest: &str) -> Result<()> {
+    let staged_old = format!("{dest}.ll10-old");
+    let _ = std::fs::remove_file(&staged_old);
+
+    take_ownership(dest);
+
+    // Step 1: rename the loaded image out of the way. The mapped section keeps
+    // the old bytes alive for processes that already loaded it.
+    if let Err(error) = std::fs::rename(dest, &staged_old) {
+        // Ownership may not have applied yet; retry once after a short pause.
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        take_ownership(dest);
+        std::fs::rename(dest, &staged_old).map_err(|second| {
+            anyhow::anyhow!(
+                "cannot rename {dest} (first attempt: {error}; second attempt: {second})"
+            )
+        })?;
+    }
+
+    // Step 2: put the replacement in place under the original name.
+    if let Err(error) = std::fs::copy(source, dest) {
+        // Never leave the system without the file.
+        let _ = std::fs::rename(&staged_old, dest);
+        return Err(anyhow::anyhow!("cannot write {dest}: {error}"));
+    }
+
+    // Step 3: the old image is still mapped, so it can only be removed on reboot.
+    schedule_delete_at_reboot(&staged_old);
+
+    Ok(())
 }

@@ -199,6 +199,29 @@ impl<B: SystemBackend> PatchRuntime<B> {
             anyhow::bail!("requires administrator privileges");
         }
 
+        // Preconditions gate every write. A patch built for one Windows build must
+        // never be applied to another: replacing shell32.dll with a binary from a
+        // different build prevents the machine from booting.
+        for precondition in &manifest.preconditions {
+            match precondition {
+                patch_core::Precondition::FileSha256 { path, one_of, .. } => {
+                    let actual = self.backend.file_hash(path)?.to_lowercase();
+                    let matches = one_of.iter().any(|allowed| allowed.eq_ignore_ascii_case(&actual));
+                    if !matches {
+                        return Ok(ApplyReport {
+                            patch_id: id.to_string(),
+                            state: PatchState::NotApplicable,
+                            dry_run: false,
+                            message: format!(
+                                "refusing to apply: {path} has hash {actual}, which this patch does not support"
+                            ),
+                            pending_reboot: false,
+                        });
+                    }
+                }
+            }
+        }
+
         // Create journal
         let mut journal = Journal::new(id.to_string());
 
