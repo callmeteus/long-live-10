@@ -19,6 +19,11 @@ a system file.
 - Pending file replacements use on-reboot mechanism
 - Registry changes journal previous values
 - Validate with ll10-agent patches validate
+- **No registry-only mitigations.** Every mitigation must be implemented via
+  reverse engineering (R) and a binary file patch (A): a patched artifact under
+  `artifacts/` produced by a script in `notes/`. Registry changes may only
+  accompany a binary patch (see CVE-2026-96951), never replace it. A patch
+  with no binary artifact is not acceptable.
 
 ## Build variants
 

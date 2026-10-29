@@ -47,6 +47,12 @@ documentation, comments or this file. Code and docs are written in English.
 8. **Patch layout** stays `packages/patches/<id>/` with `patch.yml`,
    `README.md`, `RECOVERY.md`, `artifacts/` and `notes/`. `notes/` is never
    executed by the engine.
+9. **No registry-only mitigations.** Every mitigation must be implemented via
+   reverse engineering (R) and a binary file patch (A) - i.e. a patched
+   artifact under `artifacts/` produced by a script in `notes/`. Registry
+   changes are only ever an accompaniment to a binary patch (as in
+   CVE-2026-96951), never the mitigation itself. A patch with no binary
+   artifact is not acceptable.
 
 ## Replacing protected system files
 
@@ -108,4 +114,7 @@ under `C:\ProgramData\LongLive10`.
   CAB servicing: all were tried and failed (see field notes).
 - Do not hard-code user paths; resolve them from the environment.
 - Do not hand-edit `artifacts/`; regenerate with the script in `notes/`.
+- Do not ship a registry-only or configuration-only mitigation. Every
+  mitigation must include a binary artifact produced by reverse engineering
+  (R&A). If a binary patch cannot be produced safely, do not add the patch.
 - Do not weaken the fail-closed ordering to make a test pass.
