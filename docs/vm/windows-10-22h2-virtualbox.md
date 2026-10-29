@@ -136,6 +136,19 @@ Windows replayed its transaction logs. `Prepare-Guest.ps1` always requests a
 graceful ACPI shutdown before mounting; let it finish instead of powering the
 VM off by force.
 
+**Guest files look missing when the disk is inspected offline**
+Once `Setup-Vm.ps1` takes the `baseline` snapshot, VirtualBox writes to a
+differencing disk under `vm\<name>\Snapshots\`. The file named in the setup
+(`vm\<name>.vhd`) is then only the parent image, so mounting it shows the guest
+as it was before the snapshot: recent files, patches and logs are "gone" while
+the running VM still has them. Mount the disk the VM is actually attached to:
+
+```powershell
+$disk = (& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" showvminfo ll10-22h2 --machinereadable |
+  Select-String '^"SATA-0-0"') -replace '.*="(.*)"', '$1'
+Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command',"Mount-DiskImage -ImagePath '$disk'"
+```
+
 **The VM looks "hung": black screen, frozen clock, no WinRM**
 Check whether the guest is actually spinning or merely slow:
 
