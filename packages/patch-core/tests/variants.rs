@@ -103,11 +103,26 @@ fn variant_must_reference_a_declared_artifact() {
 }
 
 #[test]
-fn auto_remediation_cannot_be_enabled() {
+fn auto_remediation_accepts_a_variant_target() {
+    // The variants declare target_path, which is a valid watch target.
     let auto = "auto_remediate:\n  enabled: true\n";
     let parsed = manifest(&variants(), "", auto);
-    assert!(
-        parsed.validate().is_err(),
-        "enabling an unimplemented feature must be rejected"
-    );
+    parsed
+        .validate()
+        .expect("enabled auto-remediation with a variant target is valid");
+}
+
+#[test]
+fn auto_remediation_without_a_watch_target_is_rejected() {
+    // No variants and no watch_paths: nothing to watch.
+    let auto = "auto_remediate:\n  enabled: true\n";
+    let parsed = manifest("", "", auto);
+    assert!(parsed.validate().is_err(), "must require a watch target");
+}
+
+#[test]
+fn auto_remediation_with_watch_paths_is_valid() {
+    let auto = "auto_remediate:\n  enabled: true\n  watch_paths:\n    - C:\\Windows\\System32\\shell32.dll\n";
+    let parsed = manifest(&variants(), "", auto);
+    parsed.validate().expect("watch_paths is enough");
 }

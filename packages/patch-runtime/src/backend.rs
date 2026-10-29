@@ -19,7 +19,13 @@ pub trait SystemBackend: Send + Sync {
     fn registry_set(&self, hive: &str, key: &str, name: &str, reg_type: &str, data: &serde_json::Value) -> Result<()>;
     fn registry_delete(&self, hive: &str, key: &str, name: &str) -> Result<()>;
     fn journal_path(&self, patch_id: &str) -> PathBuf;
-    fn arm_auto_remediate(&self, patch_id: &str, manifest: &PatchManifest, config: &patch_core::AutoRemediate) -> Result<()>;
+    fn arm_auto_remediate(
+        &self,
+        patch_id: &str,
+        manifest: &PatchManifest,
+        config: &patch_core::AutoRemediate,
+        patches_dir: &std::path::Path,
+    ) -> Result<()>;
     fn disarm_auto_remediate(&self, patch_id: &str) -> Result<()>;
 }
 
@@ -107,7 +113,12 @@ impl SystemBackend for MemoryBackend {
             anyhow::bail!("backup not found: {}", backup)
         }
     }
-    fn schedule_rename(&self, _source: &str, _dest: &str) -> Result<()> { Ok(()) }
+    fn schedule_rename(&self, source: &str, dest: &str) -> Result<()> {
+        // The real backend installs the file immediately (rename, then copy),
+        // so the in-memory test double must do the same; otherwise revert would
+        // look like it worked while the target kept its patched content.
+        self.replace_file(source, dest)
+    }
     fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> { Ok(()) }
     fn registry_get(&self, _hive: &str, key: &str, name: &str) -> Result<String> {
         let registry = self.registry.lock().unwrap();
@@ -129,6 +140,12 @@ impl SystemBackend for MemoryBackend {
     fn journal_path(&self, patch_id: &str) -> PathBuf {
         self.journal_dir.join(patch_id).join("journal.json")
     }
-    fn arm_auto_remediate(&self, _patch_id: &str, _manifest: &PatchManifest, _config: &patch_core::AutoRemediate) -> Result<()> { Ok(()) }
+    fn arm_auto_remediate(
+        &self,
+        _patch_id: &str,
+        _manifest: &PatchManifest,
+        _config: &patch_core::AutoRemediate,
+        _patches_dir: &std::path::Path,
+    ) -> Result<()> { Ok(()) }
     fn disarm_auto_remediate(&self, _patch_id: &str) -> Result<()> { Ok(()) }
 }

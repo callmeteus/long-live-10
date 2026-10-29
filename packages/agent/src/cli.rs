@@ -135,6 +135,17 @@ enum PatchesCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Re-applies a patch only when the target drifted (for auto-remediation).
+    Remediate {
+        /// Patch id.
+        id: String,
+        /// Directory containing patches.
+        #[arg(long)]
+        patches_dir: Option<PathBuf>,
+        /// Print JSON.
+        #[arg(long)]
+        json: bool,
+    },
     /// Reverts a patch.
     Revert {
         /// Patch id.
@@ -268,6 +279,37 @@ fn patches_command(command: PatchesCommand) -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&report)?);
             } else {
                 println!("{}", report.message);
+            }
+            Ok(())
+        }
+        PatchesCommand::Remediate { id, patches_dir, json } => {
+            let dir = patches_dir.unwrap_or_else(default_patches_dir);
+            #[cfg(windows)]
+            let backend = patch_runtime::WindowsBackend::new();
+            #[cfg(not(windows))]
+            let backend = patch_runtime::MemoryBackend::new();
+            let runtime = patch_runtime::PatchRuntime::new(backend, dir);
+
+            let before = runtime.verify(&id)?;
+            // The subscription only re-applies patches whose journal says they
+            // are installed: a revert must not be undone by a late event.
+            let (after, action) = match runtime.remediate(&id)? {
+                Some(report) if report.state != before => (report.state, "applied"),
+                _ => (before.clone(), "none"),
+            };
+
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "patch_id": id,
+                        "state_before": format!("{:?}", before),
+                        "state_after": format!("{:?}", after),
+                        "action": action,
+                    }))?
+                );
+            } else {
+                println!("{}: {} -> {} ({})", id, format!("{:?}", before), format!("{:?}", after), action);
             }
             Ok(())
         }

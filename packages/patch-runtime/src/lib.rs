@@ -52,6 +52,63 @@ impl<B: SystemBackend> PatchRuntime<B> {
         PatchManifest::load_from_path(&path)
     }
 
+    /// True when every declared artifact target already holds its patched
+    /// content. Used to tell "applied" from "someone restored the stock file".
+    fn target_is_patched(&self, manifest: &PatchManifest) -> bool {
+        let targets: Vec<(&String, &String)> = manifest
+            .artifacts
+            .iter()
+            .filter_map(|a| a.target_path.as_ref().map(|p| (p, &a.sha256)))
+            .collect();
+
+        !targets.is_empty()
+            && targets.iter().all(|(path, sha256)| {
+                self.backend
+                    .file_hash(path)
+                    .map(|hash| hash.eq_ignore_ascii_case(sha256))
+                    .unwrap_or(false)
+            })
+    }
+
+    /// True when the file on disk matches a stock build this manifest has an
+    /// artifact for. Anything else is not ours to overwrite.
+    fn is_known_stock(&self, manifest: &PatchManifest) -> Result<bool> {
+        if manifest.build_variants.is_empty() {
+            return Ok(true);
+        }
+
+        let target = manifest.variant_target_path().unwrap_or_default().to_string();
+        let current = self.backend.file_hash(&target)?.to_lowercase();
+        Ok(matches!(
+            manifest.select_variant(&current),
+            patch_core::VariantSelection::Matched(_)
+        ))
+    }
+
+    /// Removes the remediation subscription for the duration of a write a
+    /// patch is doing itself. Re-armed by `ensure_auto_remediate` when the
+    /// patch is in place.
+    fn suspend_auto_remediate(&self, id: &str, manifest: &PatchManifest) -> Result<()> {
+        if let Some(auto) = &manifest.auto_remediate {
+            if auto.enabled {
+                self.backend.disarm_auto_remediate(id)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Arms auto-remediation when the manifest asks for it. Idempotent: the
+    /// backend removes any previous subscription before creating one.
+    fn ensure_auto_remediate(&self, id: &str, manifest: &PatchManifest) -> Result<()> {
+        if let Some(auto) = &manifest.auto_remediate {
+            if auto.enabled {
+                self.backend
+                    .arm_auto_remediate(id, manifest, auto, &self.patches_dir)?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn verify(&self, id: &str) -> Result<PatchState> {
         let manifest = self.load_manifest(id)?;
         // Check applicability first
@@ -156,6 +213,20 @@ impl<B: SystemBackend> PatchRuntime<B> {
         }
     }
 
+    /// Re-applies a patch only when it is supposed to be installed and the
+    /// machine drifted. Used by the auto-remediation subscription: an explicit
+    /// revert (or no journal at all) must never be undone by a stray event.
+    ///
+    /// Returns `None` when there was nothing to do.
+    pub fn remediate(&self, id: &str) -> Result<Option<ApplyReport>> {
+        let journal = Journal::read(&self.backend.journal_path(id)).ok();
+
+        match journal {
+            Some(j) if !j.reverted => Ok(Some(self.apply(id, true)?)),
+            _ => Ok(None),
+        }
+    }
+
     pub fn apply(&self, id: &str, confirm: bool) -> Result<ApplyReport> {
         if !confirm {
             return Ok(ApplyReport {
@@ -170,16 +241,35 @@ impl<B: SystemBackend> PatchRuntime<B> {
         let manifest = self.load_manifest(id)?;
         let journal_path = self.backend.journal_path(id);
 
-        // Check if already applied
+        // A journal records what was changed, not proof that the machine is
+        // still in that state: SFC and servicing updates put the stock binary
+        // back without touching it. Decide from the file hash instead, and roll
+        // the old changes back before re-applying so the backup of the original
+        // file keeps pointing at the original.
         if let Ok(j) = Journal::read(&journal_path) {
             if !j.reverted {
-                return Ok(ApplyReport {
-                    patch_id: id.to_string(),
-                    state: PatchState::Applied,
-                    dry_run: false,
-                    message: "already applied".to_string(),
-                    pending_reboot: j.pending_reboot,
-                });
+                let has_targets = manifest.artifacts.iter().any(|a| a.target_path.is_some());
+
+                if !has_targets || self.target_is_patched(&manifest) {
+                    // Re-arming here matters: a repair tool may have removed
+                    // the subscription while the file itself is still patched.
+                    self.ensure_auto_remediate(id, &manifest)?;
+                    return Ok(ApplyReport {
+                        patch_id: id.to_string(),
+                        state: PatchState::Applied,
+                        dry_run: false,
+                        message: "already applied".to_string(),
+                        pending_reboot: j.pending_reboot,
+                    });
+                }
+
+                // Only a build we have a stock hash for may be re-applied. Any
+                // other hash means the machine moved on (or the file was
+                // replaced by something we do not know); writing our artifact
+                // over it could stop the machine from booting.
+                if self.is_known_stock(&manifest)? {
+                    self.revert(id, true)?;
+                }
             }
         }
 
@@ -217,6 +307,7 @@ impl<B: SystemBackend> PatchRuntime<B> {
                     selected_artifact = Some(artifact);
                 }
                 patch_core::VariantSelection::AlreadyApplied(_) => {
+                    self.ensure_auto_remediate(id, &manifest)?;
                     return Ok(ApplyReport {
                         patch_id: id.to_string(),
                         state: PatchState::Applied,
@@ -261,6 +352,11 @@ impl<B: SystemBackend> PatchRuntime<B> {
                 }
             }
         }
+
+        // Our own write is an instance-modification event. If the subscription
+        // were still armed it would start a second apply while this one is
+        // halfway through, and the two would fight over the journal.
+        self.suspend_auto_remediate(id, &manifest)?;
 
         // Create journal
         let mut journal = Journal::new(id.to_string());
@@ -323,12 +419,7 @@ impl<B: SystemBackend> PatchRuntime<B> {
         journal.pending_reboot = pending_reboot;
         journal.save(&journal_path)?;
 
-        // Auto-remediate
-        if let Some(ar) = &manifest.auto_remediate {
-            if ar.enabled {
-                self.backend.arm_auto_remediate(id, &manifest, ar)?;
-            }
-        }
+        self.ensure_auto_remediate(id, &manifest)?;
 
         Ok(ApplyReport {
             patch_id: id.to_string(),
@@ -370,6 +461,10 @@ impl<B: SystemBackend> PatchRuntime<B> {
             anyhow::bail!("requires administrator privileges");
         }
 
+        // Stop listening before restoring the file: the restore itself is a
+        // modification event and would trigger a remediation mid-revert.
+        self.suspend_auto_remediate(id, &manifest)?;
+
         let mut restored = 0;
 
         // Revert pending renames first
@@ -390,13 +485,12 @@ impl<B: SystemBackend> PatchRuntime<B> {
             restored += 1;
         }
 
-        // Restore files from backup (use pending rename for locked files)
+        // Restore files from backup. The backend already knows how to replace a
+        // file that is still mapped (copy, then rename), so the restore does
+        // not need to be deferred to a reboot.
         for change in &journal.file_changes {
             if let Some(backup) = &change.backup_path {
-                // Stage the backup for pending replacement
-                let staged = format!("{}.revert", change.path);
-                self.backend.stage_file(std::path::Path::new(backup), &staged)?;
-                self.backend.schedule_rename(&staged, &change.path)?;
+                self.backend.restore_file(backup, &change.path)?;
                 restored += 1;
             }
         }
@@ -406,13 +500,6 @@ impl<B: SystemBackend> PatchRuntime<B> {
             for op in &revert.after_journal {
                 // Execute declared revert ops (simplified)
                 let _ = op;
-            }
-        }
-
-        // Disarm auto-remediate
-        if let Some(ar) = &manifest.auto_remediate {
-            if ar.enabled {
-                self.backend.disarm_auto_remediate(id)?;
             }
         }
 

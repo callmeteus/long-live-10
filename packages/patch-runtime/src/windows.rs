@@ -182,20 +182,44 @@ impl super::SystemBackend for WindowsBackend {
 
     fn arm_auto_remediate(
         &self,
-        _patch_id: &str,
-        _manifest: &PatchManifest,
-        _config: &patch_core::AutoRemediate,
+        patch_id: &str,
+        manifest: &PatchManifest,
+        config: &patch_core::AutoRemediate,
+        patches_dir: &std::path::Path,
     ) -> Result<()> {
-        // Reserved. A correct implementation needs a permanent WMI event
-        // subscription on the target file and a matching removal on revert. The
-        // previous scheduled-task stub was not equivalent and was never
-        // validated, so it is gone rather than left looking functional.
-        // Manifests cannot reach this point: validation rejects enabled: true.
-        anyhow::bail!("auto-remediation is not implemented")
+        if !config.enabled {
+            return Ok(());
+        }
+
+        // The subscription watches one file, so a manifest without a watch path
+        // cannot be armed. Fall back to the variant target when it is omitted.
+        let watch = config
+            .watch_paths
+            .first()
+            .map(String::as_str)
+            .or_else(|| manifest.variant_target_path())
+            .ok_or_else(|| anyhow::anyhow!("auto_remediate needs watch_paths or a variant target"))?;
+
+        let exe = std::env::current_exe()?.display().to_string();
+        let log = r"C:\ProgramData\LongLive10\remediate.log";
+        if let Some(parent) = std::path::Path::new(log).parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // CommandLineEventConsumer is not a shell, so the redirection and the
+        // quoting both need cmd.exe.
+        let command = format!(
+            "cmd.exe /c \"\"{exe}\" patches remediate {patch_id} --patches-dir \"{}\" --json >> \"{log}\" 2>&1\"",
+            patches_dir.display()
+        );
+
+        let script = build_wmi_arm_script(patch_id, watch, &command, config.debounce_seconds.max(1));
+        run_powershell(&script)
     }
 
-    fn disarm_auto_remediate(&self, _patch_id: &str) -> Result<()> {
-        Ok(())
+    fn disarm_auto_remediate(&self, patch_id: &str) -> Result<()> {
+        let script = build_wmi_disarm_script(patch_id);
+        run_powershell(&script)
     }
 
 }
@@ -232,13 +256,19 @@ fn to_wide(value: &str) -> Vec<u16> {
 #[cfg(windows)]
 fn take_ownership(path: &str) {
     // WRP is enforced with an ACL owned by TrustedInstaller, so ownership has to
-    // move first. The Administrators group is targeted by SID because its name
-    // is localized ("Administradores" on pt-BR, "Administratoren" on de-DE).
+    // move first. It moves to the current principal, not to Administrators
+    // (/a): an owner always has implicit WRITE_DAC, which is what lets the
+    // grants below apply when the caller is LocalSystem, a non-member of that
+    // group. The group is named by SID because "Administrators" is localized
+    // ("Administradores" on pt-BR, "Administratoren" on de-DE).
     let _ = std::process::Command::new("takeown")
-        .args(["/f", path, "/a"])
+        .args(["/f", path])
         .output();
+    // The WMI consumer runs as LocalSystem, which is not a member of the
+    // Administrators group. Without the SYSTEM grant, auto-remediation gets
+    // access denied where an interactive admin apply succeeds.
     let _ = std::process::Command::new("icacls")
-        .args([path, "/grant", "*S-1-5-32-544:F"])
+        .args([path, "/grant", "*S-1-5-32-544:F", "*S-1-5-18:F"])
         .output();
 }
 
@@ -259,8 +289,19 @@ fn schedule_delete_at_reboot(path: &str) {
 
 #[cfg(windows)]
 fn replace_in_use(source: &str, dest: &str) -> Result<()> {
-    let staged_old = format!("{dest}.ll10-old");
+    let mut staged_old = format!("{dest}.ll10-old");
     let _ = std::fs::remove_file(&staged_old);
+
+    // The previous image is still mapped by running processes, so it cannot be
+    // deleted before the reboot that schedules it. A second replacement needs
+    // its own name: renaming onto the leftover fails with access denied.
+    if std::path::Path::new(&staged_old).exists() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_millis())
+            .unwrap_or(0);
+        staged_old = format!("{dest}.ll10-old.{stamp}");
+    }
 
     take_ownership(dest);
 
@@ -288,4 +329,100 @@ fn replace_in_use(source: &str, dest: &str) -> Result<()> {
     schedule_delete_at_reboot(&staged_old);
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Auto-remediation: a permanent WMI event subscription.
+//
+// WMI is the only mechanism that reacts to a file changing underneath us (SFC
+// repair, a servicing update). A scheduled task would only notice at boot.
+//
+// The subscription runs our own agent binary; a patch never supplies the
+// command. Everything is removed again on revert.
+// ---------------------------------------------------------------------------
+
+#[cfg(windows)]
+fn ps_quote(value: &str) -> String {
+    value.replace('\'', "''")
+}
+
+#[cfg(windows)]
+fn run_powershell(script: &str) -> Result<()> {
+    let output = std::process::Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ])
+        .output()
+        .map_err(|e| anyhow::anyhow!("failed to start PowerShell: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        anyhow::bail!(
+            "auto-remediation setup failed: {}",
+            if stderr.trim().is_empty() { stdout } else { stderr }
+        );
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn build_wmi_disarm_script(patch_id: &str) -> String {
+    let filter = ps_quote(&format!("LL10Remediate_{patch_id}_filter"));
+    let consumer = ps_quote(&format!("LL10Remediate_{patch_id}_consumer"));
+
+    format!(
+        r#"$ErrorActionPreference='SilentlyContinue'
+$ns='root\subscription'
+Get-WmiObject -Namespace $ns -Class __FilterToConsumerBinding -ErrorAction SilentlyContinue |
+  Where-Object {{ "$($_.Filter)" -like "*{filter}*" -or "$($_.Consumer)" -like "*{consumer}*" }} |
+  Remove-WmiObject -ErrorAction SilentlyContinue
+Get-WmiObject -Namespace $ns -Class __EventFilter -Filter "Name='{filter}'" -ErrorAction SilentlyContinue |
+  Remove-WmiObject -ErrorAction SilentlyContinue
+Get-WmiObject -Namespace $ns -Class CommandLineEventConsumer -Filter "Name='{consumer}'" -ErrorAction SilentlyContinue |
+  Remove-WmiObject -ErrorAction SilentlyContinue
+'disarmed'"#
+    )
+}
+
+#[cfg(windows)]
+fn build_wmi_arm_script(patch_id: &str, watch_path: &str, command: &str, debounce: u32) -> String {
+    let filter = ps_quote(&format!("LL10Remediate_{patch_id}_filter"));
+    let consumer = ps_quote(&format!("LL10Remediate_{patch_id}_consumer"));
+    // WQL string literals need every backslash doubled; "C:\Windows\..." inside
+    // a query is rejected as an unparsable query.
+    let path = ps_quote(&watch_path.replace('\\', "\\\\"));
+    let command = ps_quote(command);
+
+    format!(
+        r#"$ErrorActionPreference='Stop'
+$ns='root\subscription'
+{disarm}
+$ErrorActionPreference='Stop'
+$query="SELECT * FROM __InstanceModificationEvent WITHIN {debounce} WHERE TargetInstance ISA 'CIM_DataFile' AND TargetInstance.Name = '{path}'"
+$filter = Set-WmiInstance -Namespace $ns -Class __EventFilter -Arguments @{{
+  Name='{filter}'; EventNamespace='root\cimv2'; QueryLanguage='WQL'; Query=$query }}
+$consumer = Set-WmiInstance -Namespace $ns -Class CommandLineEventConsumer -Arguments @{{
+  Name='{consumer}'; CommandLineTemplate='{command}'; ExecutablePath='' }}
+$existing = Get-WmiObject -Namespace $ns -Class __FilterToConsumerBinding -ErrorAction SilentlyContinue |
+  Where-Object {{ "$($_.Filter)" -like "*{filter}*" -or "$($_.Consumer)" -like "*{consumer}*" }}
+if ($existing) {{
+  'already armed'
+}} else {{
+  Set-WmiInstance -Namespace $ns -Class __FilterToConsumerBinding -Arguments @{{
+    Filter=$filter; Consumer=$consumer }} | Out-Null
+  'armed'
+}}"#,
+        disarm = build_wmi_disarm_script(patch_id),
+        debounce = debounce,
+        path = path,
+        filter = filter,
+        consumer = consumer,
+        command = command,
+    )
 }

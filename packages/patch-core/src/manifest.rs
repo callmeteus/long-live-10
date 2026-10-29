@@ -252,13 +252,12 @@ impl PatchManifest {
         // implementation yet. Refusing here keeps a manifest from advertising a
         // capability the engine cannot deliver.
         if let Some(auto) = &self.auto_remediate {
-            if auto.enabled {
+            if auto.enabled && auto.watch_paths.is_empty() && self.variant_target_path().is_none() {
                 anyhow::bail!(
-                    "auto_remediate.enabled is not supported yet; keep it disabled until the                      WMI subscription and its removal are implemented and validated"
+                    "auto_remediate.enabled needs watch_paths, or build_variants whose artifact declares target_path"
                 );
             }
         }
-
         Ok(())
     }
 }

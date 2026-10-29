@@ -49,6 +49,39 @@ which builds are supported.
 
 ## Auto-remediation
 
-Reserved, not implemented. `auto_remediate.enabled: true` is rejected by
-`patches validate`; keep it disabled until the WMI subscription and its removal
-exist and are validated.
+A patch that has to keep working after a repair tool (SFC) or a servicing
+operation rewrites its target can ask the engine to watch it:
+
+```yaml
+auto_remediate:
+  enabled: true
+  debounce_seconds: 10
+  watch_paths:
+    - C:\Windows\System32\shell32.dll   # optional when an artifact declares target_path
+```
+
+On `apply` the engine registers a permanent WMI event subscription in
+`root\subscription` and removes it on `revert`. The subscription runs the agent
+itself, never a command supplied by the patch:
+
+```text
+ll10-agent patches remediate <id> --patches-dir <dir> --json
+```
+
+Rules the engine enforces:
+
+- `enabled: true` requires `watch_paths` or at least one artifact with
+  `target_path`; `patches validate` rejects it otherwise.
+- `remediate` re-applies only when the journal exists and says the patch is
+  installed. After `revert` it is a no-op, so a late event cannot undo a revert.
+- Drift is decided from the file hash, not the journal. A file that matches a
+  declared stock build is re-applied; a file that matches no stock hash (a
+  Windows update moved the machine to an unsupported build) is reported as
+  `not_applicable` and left untouched.
+- The subscription is disarmed before the engine writes and re-armed afterwards,
+  so the engine's own replacement does not trigger a second apply.
+- The consumer runs as `LocalSystem`. Replacement grants both the Administrators
+  group and `SYSTEM` (`*S-1-5-18`) full control on the target; granting only
+  Administrators fails with access denied under remediation.
+
+Remediation output is appended to `C:\ProgramData\LongLive10\remediate.log`.
