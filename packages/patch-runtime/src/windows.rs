@@ -180,33 +180,24 @@ impl super::SystemBackend for WindowsBackend {
         self.journal_dir.join(patch_id).join("journal.json")
     }
 
-    fn arm_auto_remediate(&self, patch_id: &str, _manifest: &PatchManifest, config: &patch_core::AutoRemediate) -> Result<()> {
-        if !config.enabled { return Ok(()); }
-        // Create WMI event subscription (simplified - would need WMI COM calls)
-        // For now, create a scheduled task as fallback
-        let task_name = format!("LL10_AutoRemediate_{}", patch_id);
-        let action = format!(
-            "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"& ll10-agent patches verify {} --json\"",
-            patch_id
-        );
-        // Use schtasks to create a boot-time task
-        let _ = std::process::Command::new("schtasks")
-            .args(["/create", "/tn", &task_name, "/tr", &action, "/sc", "onstart", "/ru", "SYSTEM", "/rl", "HIGHEST", "/f"])
-            .output();
+    fn arm_auto_remediate(
+        &self,
+        _patch_id: &str,
+        _manifest: &PatchManifest,
+        _config: &patch_core::AutoRemediate,
+    ) -> Result<()> {
+        // Reserved. A correct implementation needs a permanent WMI event
+        // subscription on the target file and a matching removal on revert. The
+        // previous scheduled-task stub was not equivalent and was never
+        // validated, so it is gone rather than left looking functional.
+        // Manifests cannot reach this point: validation rejects enabled: true.
+        anyhow::bail!("auto-remediation is not implemented")
+    }
+
+    fn disarm_auto_remediate(&self, _patch_id: &str) -> Result<()> {
         Ok(())
     }
 
-
-
-
-
-    fn disarm_auto_remediate(&self, patch_id: &str) -> Result<()> {
-        let task_name = format!("LL10_AutoRemediate_{}", patch_id);
-        let _ = std::process::Command::new("schtasks")
-            .args(["/delete", "/tn", &task_name, "/f"])
-            .output();
-        Ok(())
-    }
 }
 
 #[cfg(windows)]

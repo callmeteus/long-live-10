@@ -100,9 +100,14 @@ impl<B: SystemBackend> PatchRuntime<B> {
         for check in &manifest.checks {
             match check {
                 patch_core::Check::FileSha256 { path, equals, .. } => {
-                    let hash = self.backend.file_hash(path);
-                    match hash {
-                        Ok(h) if h.to_lowercase() == equals.to_lowercase() => {}
+                    // "$selected" means "whichever build variant was installed".
+                    let expected = if equals == "$selected" {
+                        manifest.patched_hashes()
+                    } else {
+                        vec![equals.to_lowercase()]
+                    };
+                    match self.backend.file_hash(path) {
+                        Ok(hash) if expected.contains(&hash.to_lowercase()) => {}
                         Ok(_) => { all_pass = false; }
                         Err(_) => { all_pass = false; any_fail = true; }
                     }
@@ -199,6 +204,41 @@ impl<B: SystemBackend> PatchRuntime<B> {
             anyhow::bail!("requires administrator privileges");
         }
 
+        // A manifest with build variants picks its artifact from the current file
+        // hash. This is what lets one package cover several Windows builds while
+        // refusing every build it has no artifact for.
+        let mut selected_artifact: Option<String> = None;
+        if !manifest.build_variants.is_empty() {
+            let target = manifest.variant_target_path().unwrap_or_default().to_string();
+            let current = self.backend.file_hash(&target)?.to_lowercase();
+
+            match manifest.select_variant(&current) {
+                patch_core::VariantSelection::Matched(artifact) => {
+                    selected_artifact = Some(artifact);
+                }
+                patch_core::VariantSelection::AlreadyApplied(_) => {
+                    return Ok(ApplyReport {
+                        patch_id: id.to_string(),
+                        state: PatchState::Applied,
+                        dry_run: false,
+                        message: "already applied".to_string(),
+                        pending_reboot: false,
+                    });
+                }
+                patch_core::VariantSelection::Unsupported => {
+                    return Ok(ApplyReport {
+                        patch_id: id.to_string(),
+                        state: PatchState::NotApplicable,
+                        dry_run: false,
+                        message: format!(
+                            "refusing to apply: {target} has hash {current}, which this patch does not support"
+                        ),
+                        pending_reboot: false,
+                    });
+                }
+            }
+        }
+
         // Preconditions gate every write. A patch built for one Windows build must
         // never be applied to another: replacing shell32.dll with a binary from a
         // different build prevents the machine from booting.
@@ -234,11 +274,23 @@ impl<B: SystemBackend> PatchRuntime<B> {
                     journal.add_backup(op_id.clone(), path.clone(), backup);
                 }
                 patch_core::Operation::StageFile { id: op_id, artifact, to } => {
+                    let artifact_id = if artifact == "$selected" {
+                        selected_artifact.clone().unwrap_or_default()
+                    } else {
+                        artifact.clone()
+                    };
                     let artifact_path = self.patches_dir.join(id).join(
-                        manifest.artifacts.iter().find(|a| a.id == *artifact).map(|a| a.file.clone()).unwrap_or_default()
+                        manifest
+                            .artifacts
+                            .iter()
+                            .find(|a| a.id == artifact_id)
+                            .map(|a| a.file.clone())
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("artifact '{artifact_id}' is not declared by the manifest")
+                            })?
                     );
                     self.backend.stage_file(&artifact_path, to)?;
-                    journal.add_staged(op_id.clone(), artifact.clone(), to.clone());
+                    journal.add_staged(op_id.clone(), artifact_id, to.clone());
                 }
                 patch_core::Operation::ReplaceFile { id: op_id, from, path, mode } => {
                     let staged = journal.staged_path(from).unwrap_or_default();

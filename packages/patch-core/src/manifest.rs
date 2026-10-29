@@ -149,6 +149,31 @@ pub struct Revert {
     pub after_journal: Vec<Operation>,
 }
 
+/// One supported source build: the stock hash of the target file and the
+/// artifact that replaces it.
+///
+/// A binary patch of a system DLL is build-specific. Listing the stock hash here
+/// lets one manifest carry several builds while still refusing any build it has
+/// no artifact for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BuildVariant {
+    /// SHA-256 of the untouched target file on this build.
+    pub stock_sha256: String,
+    /// Artifact id (from `artifacts`) that replaces it.
+    pub artifact: String,
+}
+
+/// Result of matching the current file against the declared build variants.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VariantSelection {
+    /// The file matches a stock hash and this artifact should be installed.
+    Matched(String),
+    /// The file already carries one of the patched artifacts.
+    AlreadyApplied(String),
+    /// No variant covers this file.
+    Unsupported,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PatchManifest {
     pub schema: u32,
@@ -169,6 +194,10 @@ pub struct PatchManifest {
     pub operations: Vec<Operation>,
     #[serde(default)]
     pub checks: Vec<Check>,
+    /// Supported source builds. When present, the engine selects the artifact
+    /// from the current file hash and `preconditions` must be empty.
+    #[serde(default)]
+    pub build_variants: Vec<BuildVariant>,
     #[serde(default)]
     pub auto_remediate: Option<AutoRemediate>,
     #[serde(default)]
@@ -187,6 +216,7 @@ impl PatchManifest {
     }
 
     pub fn validate(&self) -> Result<()> {
+        self.validate_variants()?;
         if self.schema != MANIFEST_SCHEMA {
             anyhow::bail!("unsupported schema: {}", self.schema);
         }
@@ -209,11 +239,135 @@ impl PatchManifest {
         }
         for check in &self.checks {
             if let Check::FileSha256 { equals, .. } = check {
-                if equals.len() != 64 || !equals.chars().all(|c| c.is_ascii_hexdigit()) {
+                // "$selected" is resolved at runtime from the matched build variant.
+                if equals != "$selected"
+                    && (equals.len() != 64 || !equals.chars().all(|c| c.is_ascii_hexdigit()))
+                {
                     anyhow::bail!("invalid sha256 in check");
                 }
             }
         }
+
+        // Auto-remediation is reserved in the schema but has no validated
+        // implementation yet. Refusing here keeps a manifest from advertising a
+        // capability the engine cannot deliver.
+        if let Some(auto) = &self.auto_remediate {
+            if auto.enabled {
+                anyhow::bail!(
+                    "auto_remediate.enabled is not supported yet; keep it disabled until the                      WMI subscription and its removal are implemented and validated"
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl PatchManifest {
+    /// Picks the variant that matches the current file hash.
+    pub fn select_variant(&self, current_sha256: &str) -> VariantSelection {
+        if self.build_variants.is_empty() {
+            return VariantSelection::Unsupported;
+        }
+
+        let current = current_sha256.to_lowercase();
+
+        for variant in &self.build_variants {
+            if variant.stock_sha256.to_lowercase() == current {
+                return VariantSelection::Matched(variant.artifact.clone());
+            }
+        }
+
+        for artifact in &self.artifacts {
+            if artifact.sha256.to_lowercase() == current {
+                return VariantSelection::AlreadyApplied(artifact.id.clone());
+            }
+        }
+
+        VariantSelection::Unsupported
+    }
+
+    /// The file these variants replace, if the manifest declares any.
+    pub fn variant_target_path(&self) -> Option<&str> {
+        self.build_variants.iter().find_map(|variant| {
+            self.artifacts
+                .iter()
+                .find(|artifact| artifact.id == variant.artifact)
+                .and_then(|artifact| artifact.target_path.as_deref())
+        })
+    }
+
+    /// Every patched hash, used to verify without knowing which build was patched.
+    pub fn patched_hashes(&self) -> Vec<String> {
+        self.artifacts
+            .iter()
+            .map(|artifact| artifact.sha256.to_lowercase())
+            .collect()
+    }
+
+    fn validate_variants(&self) -> Result<()> {
+        if self.build_variants.is_empty() {
+            for operation in &self.operations {
+                if let Operation::StageFile { artifact, .. } = operation {
+                    if artifact == "$selected" {
+                        anyhow::bail!("stage_file.artifact $selected requires build_variants");
+                    }
+                }
+            }
+            for check in &self.checks {
+                if let Check::FileSha256 { equals, .. } = check {
+                    if equals == "$selected" {
+                        anyhow::bail!("checks.equals $selected requires build_variants");
+                    }
+                }
+            }
+            return Ok(());
+        }
+
+        if !self.preconditions.is_empty() {
+            anyhow::bail!(
+                "build_variants and preconditions are mutually exclusive: the variant list already decides which builds are supported"
+            );
+        }
+
+        let mut seen_stock = std::collections::HashSet::new();
+        let mut target_paths = std::collections::HashSet::new();
+
+        for variant in &self.build_variants {
+            if variant.stock_sha256.len() != 64
+                || !variant.stock_sha256.chars().all(|c| c.is_ascii_hexdigit())
+            {
+                anyhow::bail!("invalid stock_sha256 in build_variants");
+            }
+            if !seen_stock.insert(variant.stock_sha256.to_lowercase()) {
+                anyhow::bail!("duplicate stock_sha256 in build_variants");
+            }
+
+            let artifact = self
+                .artifacts
+                .iter()
+                .find(|artifact| artifact.id == variant.artifact)
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "build_variants references unknown artifact '{}'",
+                        variant.artifact
+                    )
+                })?;
+
+            let path = artifact.target_path.clone().unwrap_or_default();
+            if path.is_empty() {
+                anyhow::bail!(
+                    "artifact '{}' must declare target_path to be used in build_variants",
+                    artifact.id
+                );
+            }
+            target_paths.insert(path);
+        }
+
+        if target_paths.len() != 1 {
+            anyhow::bail!("all build_variants must target the same file");
+        }
+
         Ok(())
     }
 }
