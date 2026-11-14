@@ -223,6 +223,19 @@ impl PatchManifest {
         if self.id.is_empty() {
             anyhow::bail!("id cannot be empty");
         }
+        // The id is used as a directory name and is interpolated into the
+        // auto-remediation command line. Restrict it to a conservative
+        // character set so it can never be parsed as shell syntax.
+        if !self
+            .id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+        {
+            anyhow::bail!(
+                "invalid id '{}': only ASCII letters, digits, '-', '_' and '.' are allowed",
+                self.id
+            );
+        }
         for artifact in &self.artifacts {
             if artifact.sha256.len() != 64 || !artifact.sha256.chars().all(|c| c.is_ascii_hexdigit()) {
                 anyhow::bail!("invalid sha256 for artifact {}", artifact.id);
