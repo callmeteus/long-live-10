@@ -5,6 +5,21 @@ Operational guide for AI agents working in this repository. Read
 anything under `packages/patches`, `packages/patch-runtime` or the VM tooling:
 it lists the approaches that failed and the exact symptoms they produce.
 
+## Operating rules (read first)
+
+- **Everything must be tested inside a VM.** No change, script, build, or
+  command is complete just because it worked on the host.
+- **The VM does not have to run on this machine.** It may run on a machine the
+  user instructs. Confirm which machine to use before testing; if the user has
+  not stated it, **ask** — never assume the local machine.
+- Use the **reverse-engineer-anything (REA)** skill **whenever possible**, no
+  exceptions, when work involves binaries, packages, decompilation, runtime
+  evidence, or behavior not established by available source code. Prefer REA
+  over guessing from filenames, strings, or layout alone.
+- The full, non-versioned instructions live in `.private/INSTRUCTIONS.md`
+  (local only, gitignored). Read it at the start of every session; if the folder
+  is missing or empty, tell the user.
+
 ## Language
 
 Answer in the user's language, regardless of the language of the code,

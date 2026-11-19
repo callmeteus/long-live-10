@@ -13,3 +13,6 @@
 
 # Local data (backups, journals, etc.)
 .data/
+
+# Private, local-only agent instructions (not versioned)
+.private/
