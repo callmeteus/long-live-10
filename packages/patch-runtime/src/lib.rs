@@ -391,11 +391,9 @@ impl<B: SystemBackend> PatchRuntime<B> {
                 }
                 patch_core::Operation::SetRegistry { id: op_id, hive, key, name, reg_type, data } => {
                     self.backend.registry_set(hive, key, name, reg_type, data)?;
-                    journal.add_registry_change(op_id.clone(), hive.clone(), key.clone(), name.clone());
                 }
                 patch_core::Operation::RemoveRegistryValue { id: op_id, hive, key, name } => {
                     self.backend.registry_delete(hive, key, name)?;
-                    journal.add_registry_change(op_id.clone(), hive.clone(), key.clone(), name.clone());
                 }
                 patch_core::Operation::ReRegisterAppx { id: op_id, package_family_name, manifest_path } => {
                     // Only re-register when it is actually needed: this is a
@@ -428,6 +426,30 @@ impl<B: SystemBackend> PatchRuntime<B> {
             },
             pending_reboot,
         })
+    }
+
+    /// Executes one operation declared under `revert.after_journal`.
+    ///
+    /// These are the operations a patch author may need after the journal has
+    /// restored files and registry values (for example re-registering an AppX
+    /// package that the patch deregistered). Operations that only make sense
+    /// during apply are refused here instead of being silently skipped.
+    fn execute_revert_operation(&self, op: &patch_core::Operation) -> Result<()> {
+        match op {
+            patch_core::Operation::SetRegistry { hive, key, name, reg_type, data, .. } => {
+                self.backend.registry_set(hive, key, name, reg_type, data)
+            }
+            patch_core::Operation::RemoveRegistryValue { hive, key, name, .. } => {
+                self.backend.registry_delete(hive, key, name)
+            }
+            patch_core::Operation::ReRegisterAppx { manifest_path, package_family_name, .. } => {
+                self.backend.reregister_appx(manifest_path, package_family_name)
+            }
+            other => anyhow::bail!(
+                "revert.after_journal does not support operation {:?}",
+                other
+            ),
+        }
     }
 
     pub fn revert(&self, id: &str, confirm: bool) -> Result<RevertReport> {
@@ -491,11 +513,11 @@ impl<B: SystemBackend> PatchRuntime<B> {
             }
         }
 
-        // Run revert.after_journal ops
+        // Run the operations the manifest declares for the revert path.
         if let Some(revert) = &manifest.revert {
             for op in &revert.after_journal {
-                // Execute declared revert ops (simplified)
-                let _ = op;
+                self.execute_revert_operation(op)?;
+                restored += 1;
             }
         }
 

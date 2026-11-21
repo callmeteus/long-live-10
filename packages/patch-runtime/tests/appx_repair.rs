@@ -122,6 +122,67 @@ fn applying_a_healthy_registration_is_a_no_op() {
 }
 
 #[test]
+fn revert_after_journal_runs_declared_registry_operation() {
+    use patch_runtime::{PatchRuntime, SystemBackend};
+    let dir = std::env::temp_dir().join(format!(
+        "ll10-revert-op-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    let patch_dir = dir.join("revert-op");
+    std::fs::create_dir_all(&patch_dir).unwrap();
+    std::fs::write(
+        patch_dir.join("patch.yml"),
+        r#"schema: 1
+id: revert-op
+title: Revert operation test
+severity: low
+target: guest
+requires:
+  admin: true
+  reboot: false
+docs:
+  readme: README.md
+applies_to:
+  os: windows
+  arch: [x86_64]
+  builds: ">=19045.0 <19046.0"
+checks: []
+operations: []
+revert:
+  after_journal:
+    - type: set_registry
+      id: marker
+      hive: HKCU
+      key: Software\LL10\Test
+      name: Reverted
+      reg_type: string
+      data: "yes"
+"#,
+    )
+    .unwrap();
+
+    let backend = patch_runtime::MemoryBackend::new();
+    let runtime = PatchRuntime::new(backend, dir.clone());
+    runtime.apply("revert-op", true).unwrap();
+    runtime.revert("revert-op", true).unwrap();
+
+    assert_eq!(
+        runtime
+            .backend
+            .registry_get("HKCU", "Software\\LL10\\Test", "Reverted")
+            .unwrap(),
+        "yes",
+        "revert.after_journal must run the declared operation"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn registration_state_is_keyed_by_package_name() {
     use patch_runtime::SystemBackend;
 

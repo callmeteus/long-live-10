@@ -105,8 +105,6 @@ impl Journal {
         });
     }
 
-    pub fn add_registry_change(&mut self, _op_id: String, _hive: String, _key: String, _name: String) {}
-
     pub fn add_pending(&mut self, _op_id: String, dest: String, source: String) {
         self.pending_reboot_entries.push((dest, source));
     }
