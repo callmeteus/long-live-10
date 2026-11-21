@@ -53,7 +53,7 @@ impl SourceReference {
         require_text(&self.publisher, "sources[].publisher")?;
         require_text(&self.retrieved_at, "sources[].retrieved_at")?;
 
-        if !self.url.starts_with("https://") {
+        if !catalog_schema::validation::is_https_url(&self.url) {
             return Err(CompatibilityError::InsecureSource {
                 value: self.url.clone(),
             });
@@ -227,7 +227,7 @@ pub enum CompatibilityError {
 
 /// Verifies that a required string field is not blank.
 fn require_text(value: &str, field: &'static str) -> Result<(), CompatibilityError> {
-    if value.trim().is_empty() {
+    if !catalog_schema::validation::is_nonblank(value) {
         return Err(CompatibilityError::EmptyField { field });
     }
 

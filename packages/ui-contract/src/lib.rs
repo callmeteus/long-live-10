@@ -202,7 +202,7 @@ impl ContractError {
 }
 
 fn require_text(value: &str, field: &'static str) -> Result<(), ContractError> {
-    if value.trim().is_empty() {
+    if !catalog_schema::validation::is_nonblank(value) {
         return Err(ContractError::EmptyField { field });
     }
 

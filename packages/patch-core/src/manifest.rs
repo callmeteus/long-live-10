@@ -203,14 +203,14 @@ impl PatchManifest {
             );
         }
         for artifact in &self.artifacts {
-            if artifact.sha256.len() != 64 || !artifact.sha256.chars().all(|c| c.is_ascii_hexdigit()) {
+            if !catalog_schema::validation::is_sha256(&artifact.sha256) {
                 anyhow::bail!("invalid sha256 for artifact {}", artifact.id);
             }
         }
         for pre in &self.preconditions {
             if let Precondition::FileSha256 { one_of, .. } = pre {
                 for h in one_of {
-                    if h.len() != 64 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
+                    if !catalog_schema::validation::is_sha256(h) {
                         anyhow::bail!("invalid sha256 in precondition");
                     }
                 }
@@ -220,7 +220,7 @@ impl PatchManifest {
             if let Check::FileSha256 { equals, .. } = check {
                 // "$selected" is resolved at runtime from the matched build variant.
                 if equals != "$selected"
-                    && (equals.len() != 64 || !equals.chars().all(|c| c.is_ascii_hexdigit()))
+                    && !catalog_schema::validation::is_sha256(equals)
                 {
                     anyhow::bail!("invalid sha256 in check");
                 }
@@ -312,9 +312,7 @@ impl PatchManifest {
         let mut target_paths = std::collections::HashSet::new();
 
         for variant in &self.build_variants {
-            if variant.stock_sha256.len() != 64
-                || !variant.stock_sha256.chars().all(|c| c.is_ascii_hexdigit())
-            {
+            if !catalog_schema::validation::is_sha256(&variant.stock_sha256) {
                 anyhow::bail!("invalid stock_sha256 in build_variants");
             }
             if !seen_stock.insert(variant.stock_sha256.to_lowercase()) {

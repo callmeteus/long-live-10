@@ -35,10 +35,13 @@ impl Fixture {
 }
 
 fn fixture() -> Fixture {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
     let dir = std::env::temp_dir().join(format!(
-        "ll10-appx-repair-{}-{}",
+        "ll10-appx-repair-{}-{}-{}",
         PATCH_ID,
-        std::process::id()
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
     ));
     let _ = std::fs::remove_dir_all(&dir);
     let patch_dir = dir.join(PATCH_ID);
