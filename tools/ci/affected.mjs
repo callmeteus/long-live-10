@@ -2,31 +2,38 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-export const RustPackages = [
-    "agent",
-    "agent-ffi",
-    "catalog-schema",
-    "compatibility-catalog",
-    "compatibility-engine",
-    "patch-core",
-    "release-tools",
-    "ui-contract",
-    "updater",
-    "vm-harness",
-];
+/**
+ * Reads the workspace package graph from Cargo itself.
+ *
+ * The old lists were hand-maintained and drifted: they omitted patch-helper,
+ * patch-runtime and several real dependencies. Deriving them from `cargo
+ * metadata` makes the CI selection follow the actual build graph instead.
+ */
+function loadWorkspaceGraph() {
+    const output = execFileSync("cargo", ["metadata", "--no-deps", "--format-version", "1"], {
+        encoding: "utf8",
+    });
+    const metadata = JSON.parse(output);
+    const names = new Set(metadata.packages.map((entry) => entry.name));
+    const dependencies = {};
 
-const DirectDependencies = {
-    "agent": ["ui-contract"],
-    "agent-ffi": ["agent", "ui-contract"],
-    "catalog-schema": [],
-    "compatibility-catalog": ["catalog-schema"],
-    "compatibility-engine": ["compatibility-catalog", "catalog-schema"],
-    "patch-core": ["catalog-schema"],
-    "release-tools": ["updater", "catalog-schema"],
-    "ui-contract": ["catalog-schema", "compatibility-catalog"],
-    "updater": ["catalog-schema"],
-    "vm-harness": [],
-};
+    for (const entry of metadata.packages) {
+        dependencies[entry.name] = entry.dependencies
+            .filter((dependency) => dependency.kind === null && names.has(dependency.name))
+            .map((dependency) => dependency.name)
+            .sort();
+    }
+
+    return {
+        packages: [...names].sort(),
+        dependencies,
+    };
+}
+
+const graph = loadWorkspaceGraph();
+
+export const RustPackages = graph.packages;
+const DirectDependencies = graph.dependencies;
 
 const ReverseDependencies = new Map(RustPackages.map((name) => [name, []]));
 
@@ -121,23 +128,30 @@ export function affectedChecks(files) {
         }
     }
 
+    // A package that pulls in ui-contract or catalog-schema also needs the
+    // Flutter and catalog checks. Resolve this from the graph instead of a
+    // hand-written list of "UI-adjacent" packages.
+    const touchesUi = (name) =>
+        withDependents(name).includes("ui-contract");
     const ui = ci ||
         allRust ||
         changed.has("ui") ||
-        changed.has("ui-contract") ||
-        changed.has("catalog-schema") ||
-        changed.has("compatibility-catalog") ||
-        changed.has("agent") ||
-        changed.has("agent-ffi");
+        [...changed].some(touchesUi) ||
+        (allRust && RustPackages.some(touchesUi));
     const catalog = ci ||
         changed.has("catalog") ||
-        changed.has("catalog-schema") ||
-        changed.has("compatibility-catalog");
+        [...changed].some((name) =>
+            withDependents(name).some((affected) =>
+                affected === "catalog-schema" || affected === "compatibility-catalog"
+            )
+        );
     const vm = ci ||
         allRust ||
-        changed.has("vm-harness") ||
-        changed.has("patch-core") ||
-        changed.has("agent");
+        [...changed].some((name) =>
+            withDependents(name).some((affected) =>
+                affected === "vm-harness" || affected === "patch-core" || affected === "agent"
+            )
+        );
 
     return {
         rust: [...rust].sort(),
