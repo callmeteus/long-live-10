@@ -427,7 +427,7 @@ impl<B: SystemBackend> PatchRuntime<B> {
                         .appx_package_registered(package_family_name)
                         .unwrap_or(false);
                     if !healthy {
-                        self.backend.reregister_appx(manifest_path)?;
+                        self.backend.reregister_appx(manifest_path, package_family_name)?;
                         journal.add_change(op_id.clone(), manifest_path.clone());
                     }
                 }

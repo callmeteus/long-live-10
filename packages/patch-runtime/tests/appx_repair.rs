@@ -27,10 +27,10 @@ impl Fixture {
     fn degrade(&self) {
         self.runtime
             .backend
-            .registry
+            .appx_registered
             .lock()
             .unwrap()
-            .remove("appx\\registered");
+            .clear();
     }
 }
 
@@ -116,4 +116,27 @@ fn applying_a_healthy_registration_is_a_no_op() {
         f.runtime.verify(PATCH_ID).unwrap(),
         PatchState::Applied
     );
+}
+
+#[test]
+fn registration_state_is_keyed_by_package_name() {
+    use patch_runtime::SystemBackend;
+
+    let f = fixture();
+    f.runtime.apply(PATCH_ID, true).unwrap();
+
+    // O pacote declarado está registrado depois do reparo.
+    assert!(f
+        .runtime
+        .backend
+        .appx_package_registered(PACKAGE)
+        .unwrap());
+
+    // Outro pacote não pode herdar o estado: o backend real faria essa
+    // distinção, e um nome errado no manifesto deve falhar no teste.
+    assert!(!f
+        .runtime
+        .backend
+        .appx_package_registered("Microsoft.Windows.NotSearch")
+        .unwrap());
 }

@@ -21,7 +21,7 @@ pub trait SystemBackend: Send + Sync {
     /// True when an AppX package is registered for the current user.
     fn appx_package_registered(&self, package_family_name: &str) -> Result<bool>;
     /// Re-registers an AppX package from its manifest (Add-AppxPackage -Register).
-    fn reregister_appx(&self, manifest_path: &str) -> Result<()>;
+    fn reregister_appx(&self, manifest_path: &str, package_family_name: &str) -> Result<()>;
     fn journal_path(&self, patch_id: &str) -> PathBuf;
     fn arm_auto_remediate(
         &self,
@@ -38,6 +38,7 @@ pub trait SystemBackend: Send + Sync {
 pub struct MemoryBackend {
     pub files: std::sync::Mutex<HashMap<String, Vec<u8>>>,
     pub registry: std::sync::Mutex<HashMap<String, String>>,
+    pub appx_registered: std::sync::Mutex<std::collections::HashSet<String>>,
     pub admin: bool,
     pub build: String,
     pub arch: String,
@@ -141,16 +142,18 @@ impl SystemBackend for MemoryBackend {
         registry.remove(&k);
         Ok(())
     }
-    fn appx_package_registered(&self, _package_family_name: &str) -> Result<bool> {
-        // Test double: registration state is tracked in the registry map under
-        // a synthetic key so drift tests can toggle it.
-        Ok(self.registry.lock().unwrap().contains_key("appx\\registered"))
-    }
-    fn reregister_appx(&self, _manifest_path: &str) -> Result<()> {
-        self.registry
+    fn appx_package_registered(&self, package_family_name: &str) -> Result<bool> {
+        Ok(self
+            .appx_registered
             .lock()
             .unwrap()
-            .insert("appx\\registered".to_string(), "1".to_string());
+            .contains(package_family_name))
+    }
+    fn reregister_appx(&self, _manifest_path: &str, package_family_name: &str) -> Result<()> {
+        self.appx_registered
+            .lock()
+            .unwrap()
+            .insert(package_family_name.to_string());
         Ok(())
     }
     fn journal_path(&self, patch_id: &str) -> PathBuf {
