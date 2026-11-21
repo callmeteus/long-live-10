@@ -111,40 +111,18 @@ impl<B: SystemBackend> PatchRuntime<B> {
 
     pub fn verify(&self, id: &str) -> Result<PatchState> {
         let manifest = self.load_manifest(id)?;
-        // Check applicability first
+        // One applicability decision, shared with the planner in patch-core.
         let state_map = self.backend.system_state();
-        let engine = patch_core::PatchEngine::new();
-        // Use catalog-schema PatchEntry compatibility check via builds
-        let build = state_map.get("build").cloned().unwrap_or_default();
+        let build: u32 = state_map
+            .get("build")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        let ubr: Option<u32> = state_map.get("ubr").and_then(|s| s.parse().ok());
         let arch = state_map.get("architecture").cloned().unwrap_or_default();
-
-        // Check if build is in applies_to
-        let build_ok = manifest.applies_to.builds.split_whitespace().any(|b| {
-            if b.contains("..") {
-                // range check simplified
-                true
-            } else {
-                b == build
-            }
-        }) || manifest.applies_to.builds.contains(&build);
-
-        if !build_ok && !manifest.applies_to.builds.is_empty() && !build.is_empty() {
-            // Try numeric range check
-            let in_range = check_build_range(&build, &manifest.applies_to.builds);
-            if !in_range {
-                return Ok(PatchState::NotApplicable);
-            }
-        }
-
-        // Check arch
-        if !manifest.applies_to.arch.is_empty() {
-            let arch_ok = manifest.applies_to.arch.iter().any(|a| {
-                format!("{:?}", a).to_lowercase() == arch.to_lowercase()
-                    || (arch == "x86_64" && format!("{:?}", a).to_lowercase() == "x86_64")
-            });
-            if !arch_ok && !arch.is_empty() {
-                return Ok(PatchState::NotApplicable);
-            }
+        if build != 0
+            && !patch_core::manifest_applicable(&manifest, build, ubr, &arch)
+        {
+            return Ok(PatchState::NotApplicable);
         }
 
         // Check if journal exists
@@ -279,20 +257,27 @@ impl<B: SystemBackend> PatchRuntime<B> {
             }
         }
 
-        // Check applicability
+        // One applicability decision, shared with the planner in patch-core.
         let state_map = self.backend.system_state();
-        let build = state_map.get("build").cloned().unwrap_or_default();
-        if !build.is_empty() && !manifest.applies_to.builds.is_empty() {
-            let in_range = check_build_range(&build, &manifest.applies_to.builds);
-            if !in_range {
-                return Ok(ApplyReport {
-                    patch_id: id.to_string(),
-                    state: PatchState::NotApplicable,
-                    dry_run: false,
-                    message: format!("build {} not in range {}", build, manifest.applies_to.builds),
-                    pending_reboot: false,
-                });
-            }
+        let build: u32 = state_map
+            .get("build")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        let ubr: Option<u32> = state_map.get("ubr").and_then(|s| s.parse().ok());
+        let arch = state_map.get("architecture").cloned().unwrap_or_default();
+        if build != 0
+            && !patch_core::manifest_applicable(&manifest, build, ubr, &arch)
+        {
+            return Ok(ApplyReport {
+                patch_id: id.to_string(),
+                state: PatchState::NotApplicable,
+                dry_run: false,
+                message: format!(
+                    "build {} not applicable to {}",
+                    build, manifest.applies_to.builds
+                ),
+                pending_reboot: false,
+            });
         }
 
         // Check admin
@@ -534,27 +519,7 @@ impl<B: SystemBackend> PatchRuntime<B> {
     }
 }
 
-fn check_build_range(build: &str, range: &str) -> bool {
-    // Simple: check if build matches or range contains it
-    if range.contains(build) { return true; }
-    // Try numeric comparison
-    let build_num: u64 = build.split('.').next().and_then(|s| s.parse().ok()).unwrap_or(0);
-    // Parse range like ">=19045.0 <19046.0"
-    let parts: Vec<&str> = range.split_whitespace().collect();
-    let mut min: Option<u64> = None;
-    let mut max: Option<u64> = None;
-    for part in &parts {
-        if part.starts_with(">=") {
-            min = part[2..].split('.').next().and_then(|s| s.parse().ok());
-        } else if part.starts_with("<") {
-            max = part[1..].split('.').next().and_then(|s| s.parse().ok());
-        }
-    }
-    let mut ok = true;
-    if let Some(m) = min { if build_num < m { ok = false; } }
-    if let Some(m) = max { if build_num >= m { ok = false; } }
-    ok
-}
+
 
 fn chrono_now() -> String {
     // Simple timestamp without chrono dependency

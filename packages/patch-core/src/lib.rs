@@ -581,3 +581,48 @@ fn compare_version_tokens(left: &[u64], right: &[u64]) -> i32 {
 
     0
 }
+
+/// Checks a declarative patch manifest against a guest build and architecture.
+///
+/// This is the single applicability decision used by the patch runtime. It
+/// reuses `matches_build` and `matches_architecture`, the same helpers the
+/// planner uses for catalog entries, so the executing engine and the planner
+/// cannot disagree about whether a build is supported.
+pub fn manifest_applicable(
+    manifest: &PatchManifest,
+    build: u32,
+    ubr: Option<u32>,
+    architecture: &str,
+) -> bool {
+    let state = GuestState {
+        build,
+        ubr,
+        architecture: match architecture.to_ascii_lowercase().as_str() {
+            "x86_64" | "x64" | "amd64" => Architecture::X64,
+            "x86" | "i386" | "i686" => Architecture::X86,
+            "arm64" | "aarch64" => Architecture::Arm64,
+            _ => return false,
+        },
+        components: HashMap::new(),
+        applied_patches: HashSet::new(),
+    };
+
+    let builds: Vec<String> = manifest
+        .applies_to
+        .builds
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect();
+    let architectures: Vec<String> = manifest
+        .applies_to
+        .arch
+        .iter()
+        .map(|a| format!("{a:?}").to_ascii_lowercase())
+        .collect();
+
+    if !architectures.is_empty() && !matches_architecture(&architectures, state.architecture) {
+        return false;
+    }
+
+    matches_build(&builds, &state)
+}
