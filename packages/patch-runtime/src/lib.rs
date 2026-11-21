@@ -125,11 +125,9 @@ impl<B: SystemBackend> PatchRuntime<B> {
             return Ok(PatchState::NotApplicable);
         }
 
-        // Check if journal exists
         let journal_path = self.backend.journal_path(id);
         let journal = Journal::read(&journal_path).ok();
 
-        // Run checks
         let mut all_pass = true;
         for check in &manifest.checks {
             match check {
@@ -170,7 +168,6 @@ impl<B: SystemBackend> PatchRuntime<B> {
             }
         }
 
-        // Determine state
         if journal.is_none() {
             if all_pass && !manifest.checks.is_empty() {
                 // Checks pass but no journal - could be superseded or applied externally
@@ -280,7 +277,6 @@ impl<B: SystemBackend> PatchRuntime<B> {
             });
         }
 
-        // Check admin
         if manifest.requires.admin && !self.backend.is_admin() {
             anyhow::bail!("requires administrator privileges");
         }
@@ -349,10 +345,7 @@ impl<B: SystemBackend> PatchRuntime<B> {
         // halfway through, and the two would fight over the journal.
         self.suspend_auto_remediate(id, &manifest)?;
 
-        // Create journal
         let mut journal = Journal::new(id.to_string());
-
-        // Execute operations in order
         let mut pending_reboot = false;
         for op in &manifest.operations {
             match op {

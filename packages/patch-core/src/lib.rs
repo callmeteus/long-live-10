@@ -454,7 +454,7 @@ fn matches_architecture(architectures: &[String], architecture: Architecture) ->
 
         matches!(
             (normalized.as_str(), architecture),
-            ("x64" | "amd64", Architecture::X64)
+            ("x64" | "amd64" | "x86_64", Architecture::X64)
                 | ("x86" | "i386" | "i686", Architecture::X86)
                 | ("arm64" | "aarch64", Architecture::Arm64)
         )
