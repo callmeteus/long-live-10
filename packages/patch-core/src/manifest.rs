@@ -83,50 +83,6 @@ pub enum Operation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BackupFileOp {
-    pub id: String,
-    pub path: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StageFileOp {
-    pub id: String,
-    pub artifact: String,
-    pub to: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ReplaceFileOp {
-    pub id: String,
-    pub from: String,
-    pub path: String,
-    pub mode: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BackupRegistryOp {
-    pub id: String,
-    pub values: Vec<RegistryRef>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SetRegistryOp {
-    pub hive: String,
-    pub key: String,
-    pub name: String,
-    #[serde(rename = "type")]
-    pub reg_type: String,
-    pub data: serde_json::Value,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RemoveRegistryValueOp {
-    pub hive: String,
-    pub key: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Check {
     FileSha256 { id: String, path: String, equals: String },

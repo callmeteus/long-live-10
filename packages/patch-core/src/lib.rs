@@ -440,20 +440,6 @@ impl PatchEngine {
         Applicability::Applicable
     }
 
-    /// Legacy applicability check by patch identifier.
-    pub fn check_applicability(&self, _patch_id: &str) -> Result<bool> {
-        Ok(false)
-    }
-
-    /// Plans an apply operation for the given patch identifier.
-    pub fn apply(&self, _patch_id: &str) -> Result<()> {
-        Ok(())
-    }
-
-    /// Plans a rollback operation for the given patch identifier.
-    pub fn rollback(&self, _patch_id: &str) -> Result<()> {
-        Ok(())
-    }
 }
 
 impl Default for PatchEngine {
@@ -607,12 +593,7 @@ pub fn manifest_applicable(
         applied_patches: HashSet::new(),
     };
 
-    let builds: Vec<String> = manifest
-        .applies_to
-        .builds
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect();
+    let tokens: Vec<&str> = manifest.applies_to.builds.split_whitespace().collect();
     let architectures: Vec<String> = manifest
         .applies_to
         .arch
@@ -624,5 +605,32 @@ pub fn manifest_applicable(
         return false;
     }
 
+    // Support explicit ranges like ">=19045.0 <19046.0" alongside the exact
+    // build strings understood by `matches_build`. This is the format used by
+    // the existing patch manifests, so the engine must keep accepting it.
+    let mut min: Option<u32> = None;
+    let mut max: Option<u32> = None;
+    for token in &tokens {
+        if let Some(rest) = token.strip_prefix(">=") {
+            min = rest.split('.').next().and_then(|s| s.parse().ok());
+        } else if let Some(rest) = token.strip_prefix('<') {
+            max = rest.split('.').next().and_then(|s| s.parse().ok());
+        }
+    }
+    if min.is_some() || max.is_some() {
+        if let Some(m) = min {
+            if build < m {
+                return false;
+            }
+        }
+        if let Some(m) = max {
+            if build >= m {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    let builds: Vec<String> = tokens.iter().map(|s| s.to_string()).collect();
     matches_build(&builds, &state)
 }
