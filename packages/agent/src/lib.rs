@@ -108,8 +108,12 @@ mod tests {
         let info = diagnostics();
 
         assert_eq!(info.agent_version, env!("CARGO_PKG_VERSION"));
-        assert!(!info.os.is_empty());
-        assert!(!info.architecture.is_empty());
+        assert!(
+            info.os.to_ascii_lowercase().contains("windows"),
+            "diagnostics must report the host OS, got {:?}",
+            info.os
+        );
+        assert_eq!(info.architecture, "x86_64");
     }
 
     #[test]
