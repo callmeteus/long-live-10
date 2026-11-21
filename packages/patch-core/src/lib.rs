@@ -3,6 +3,7 @@ use catalog_schema::{Architecture, Artifact, PatchEntry, Validate};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+pub mod journal_io;
 pub mod manifest;
 
 pub use manifest::*;

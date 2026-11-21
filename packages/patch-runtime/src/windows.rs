@@ -121,8 +121,9 @@ impl super::SystemBackend for WindowsBackend {
     }
 
     fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> {
-        // Remove from PendingFileRenameOperations
-        // This is complex; for now, just log
+        // Intentionally empty. `schedule_rename` installs the file immediately,
+        // so no PendingFileRenameOperations entry exists to remove. Reverting a
+        // file goes through `restore_file` (field notes section 4.4).
         Ok(())
     }
 

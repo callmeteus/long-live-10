@@ -13,7 +13,15 @@ pub trait SystemBackend: Send + Sync {
     fn stage_file(&self, source: &Path, dest: &str) -> Result<()>;
     fn replace_file(&self, source: &str, dest: &str) -> Result<()>;
     fn restore_file(&self, backup: &str, dest: &str) -> Result<()>;
+    /// Applies a file from `source` to `dest`.
+    ///
+    /// Despite the historical name, this installs the file immediately: a
+    /// deferred `MoveFileEx(DELAY_UNTIL_REBOOT)` needs a write the protection
+    /// filter denies (field notes section 2), so it was never effective.
     fn schedule_rename(&self, source: &str, dest: &str) -> Result<()>;
+    /// No-op by design: `schedule_rename` already installed the file, so there
+    /// is no `PendingFileRenameOperations` entry to remove on revert (field
+    /// notes section 4.4). Kept for the trait symmetry with older manifests.
     fn cancel_rename(&self, dest: &str, source: &str) -> Result<()>;
     fn registry_get(&self, hive: &str, key: &str, name: &str) -> Result<String>;
     fn registry_set(&self, hive: &str, key: &str, name: &str, reg_type: &str, data: &serde_json::Value) -> Result<()>;
@@ -124,7 +132,10 @@ impl SystemBackend for MemoryBackend {
         // look like it worked while the target kept its patched content.
         self.replace_file(source, dest)
     }
-    fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> { Ok(()) }
+    fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> {
+        // Mirrors SystemBackend: the rename was already applied immediately.
+        Ok(())
+    }
     fn registry_get(&self, _hive: &str, key: &str, name: &str) -> Result<String> {
         let registry = self.registry.lock().unwrap();
         let k = format!("{}\\{}", key, name);
