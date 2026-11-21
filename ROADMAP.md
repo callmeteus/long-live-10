@@ -37,6 +37,18 @@ Community support for Windows 10 after conventional support ends. Items describe
 - [ ] **R-052** CVE-2026-20805 and CVE-2026-20816: DWM disclosure and Installer elevation from early 2026
   priority: medium · status: planned · added: 2026-10-23
   CVE-2026-20805 (Desktop Window Manager information disclosure) was reported exploited in the wild in 2026-01; CVE-2026-20816 (Windows Installer elevation, 7.8, TOCTOU race). Sources are community triage rather than CISA KEV, so verify exploitation status and applicability before starting.
+- [ ] **R-054** Improve the overall interface
+  priority: medium · status: planned · added: 2026-11-21
+  General quality pass on the user interface; the current one is considered poor.
+- [ ] **R-055** Show a patch list with statuses and plain-language explanations
+  priority: medium · status: planned · added: 2026-11-21
+  The interface must list all patches and each patch's status. It must explain what each patch fixes. It must describe each vulnerability in plain language for non-technical readers.
+- [ ] **R-056** Improve the dashboard with clear status messages
+  priority: medium · status: planned · added: 2026-11-21
+  Improve the home page (dashboard) so it clearly states the current state: up to date, in danger, or attention needed.
+- [ ] **R-057** Show the current version and remote update status
+  priority: medium · status: planned · added: 2026-11-21
+  The interface must state which version is currently installed and whether it is up to date compared with the remote version.
 ## Deferred
 
 - [ ] **R-034** Windows 10 21H2 and LTSC 2019 support
