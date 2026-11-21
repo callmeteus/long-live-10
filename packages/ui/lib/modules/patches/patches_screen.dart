@@ -3,8 +3,6 @@ import "dart:io";
 
 import "package:flutter/material.dart";
 
-import "../../core/i18n/app_localizations.dart";
-
 /// Patches management screen.
 class PatchesScreen extends StatefulWidget {
   const PatchesScreen({super.key});
@@ -27,69 +25,53 @@ class _PatchesScreenState extends State<PatchesScreen> {
     _loadPatches();
   }
 
-  Future<void> _loadPatches() async {
-    setState(() => _loading = true);
+  /// Runs one `ll10-agent patches` command and records its outcome.
+  ///
+  /// All callers used to repeat the same Process.run / setState / "Error: $e"
+  /// block. Keeping the error card in one place makes the visible wording
+  /// consistent and avoids a busy flag left set when a command throws.
+  Future<ProcessResult?> _runAgent(List<String> arguments, {required bool busy}) async {
+    setState(() => busy ? _busy = true : _loading = true);
     try {
-      final result = await Process.run("ll10-agent", ["patches", "list", "--json"]);
-      if (result.exitCode == 0) {
-        final data = jsonDecode(result.stdout as String) as List<dynamic>;
-        setState(() {
-          _patches = data.map((e) => e.toString()).toList();
-          _loading = false;
-        });
-      } else {
-        setState(() {
-          _status = "Failed to list patches: ${result.stderr}";
-          _loading = false;
-        });
+      final result = await Process.run("ll10-agent", arguments);
+      if (result.exitCode != 0) {
+        _status = "Failed: ${result.stderr}";
       }
+      return result;
     } catch (e) {
+      _status = "Error: $e";
+      return null;
+    } finally {
       setState(() {
-        _status = "Error: $e";
         _loading = false;
+        _busy = false;
       });
     }
   }
 
+  Future<void> _loadPatches() async {
+    final result = await _runAgent(["patches", "list", "--json"], busy: false);
+    if (result == null || result.exitCode != 0) return;
+    final data = jsonDecode(result.stdout as String) as List<dynamic>;
+    setState(() {
+      _patches = data.map((e) => e.toString()).toList();
+    });
+  }
+
   Future<void> _showPatch(String id) async {
-    setState(() => _busy = true);
-    try {
-      final result = await Process.run("ll10-agent", ["patches", "show", id, "--json"]);
-      if (result.exitCode == 0) {
-        setState(() {
-          _selected = id;
-          _detail = jsonDecode(result.stdout as String) as Map<String, dynamic>;
-          _busy = false;
-        });
-      } else {
-        setState(() {
-          _status = "Failed: ${result.stderr}";
-          _busy = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _status = "Error: $e";
-        _busy = false;
-      });
-    }
+    final result = await _runAgent(["patches", "show", id, "--json"], busy: true);
+    if (result == null || result.exitCode != 0) return;
+    setState(() {
+      _selected = id;
+      _detail = jsonDecode(result.stdout as String) as Map<String, dynamic>;
+    });
   }
 
   Future<void> _verify() async {
     if (_selected == null) return;
-    setState(() => _busy = true);
-    try {
-      final result = await Process.run("ll10-agent", ["patches", "verify", _selected!, "--json"]);
-      setState(() {
-        _status = result.stdout as String;
-        _busy = false;
-      });
-    } catch (e) {
-      setState(() {
-        _status = "Error: $e";
-        _busy = false;
-      });
-    }
+    final result = await _runAgent(["patches", "verify", _selected!, "--json"], busy: true);
+    if (result == null || result.exitCode != 0) return;
+    setState(() => _status = result.stdout as String);
   }
 
   Future<void> _apply() async {
@@ -106,19 +88,9 @@ class _PatchesScreenState extends State<PatchesScreen> {
       ),
     );
     if (confirm != true) return;
-    setState(() => _busy = true);
-    try {
-      final result = await Process.run("ll10-agent", ["patches", "apply", _selected!, "--confirm", "--json"]);
-      setState(() {
-        _status = result.stdout as String;
-        _busy = false;
-      });
-    } catch (e) {
-      setState(() {
-        _status = "Error: $e";
-        _busy = false;
-      });
-    }
+    final result = await _runAgent(["patches", "apply", _selected!, "--confirm", "--json"], busy: true);
+    if (result == null || result.exitCode != 0) return;
+    setState(() => _status = result.stdout as String);
   }
 
   Future<void> _revert() async {
@@ -135,24 +107,13 @@ class _PatchesScreenState extends State<PatchesScreen> {
       ),
     );
     if (confirm != true) return;
-    setState(() => _busy = true);
-    try {
-      final result = await Process.run("ll10-agent", ["patches", "revert", _selected!, "--confirm", "--json"]);
-      setState(() {
-        _status = result.stdout as String;
-        _busy = false;
-      });
-    } catch (e) {
-      setState(() {
-        _status = "Error: $e";
-        _busy = false;
-      });
-    }
+    final result = await _runAgent(["patches", "revert", _selected!, "--confirm", "--json"], busy: true);
+    if (result == null || result.exitCode != 0) return;
+    setState(() => _status = result.stdout as String);
   }
 
   @override
   Widget build(BuildContext context) {
-    final strings = AppLocalizations.of(context).strings;
     return Row(
       children: [
         SizedBox(
