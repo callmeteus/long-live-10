@@ -26,7 +26,8 @@ foreach ($pattern in @("EOSNotify*", "GWX*")) {
         try {
             Disable-ScheduledTask -TaskName $_.TaskName -TaskPath $_.TaskPath -ErrorAction Stop | Out-Null
             Write-Host "Disabled scheduled task $($_.TaskPath)$($_.TaskName)"
-        } catch {
+        }
+        catch {
             Write-Warning "Could not disable $($_.TaskPath)$($_.TaskName): $($_.Exception.Message)"
         }
     }

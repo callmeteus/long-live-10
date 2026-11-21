@@ -25,7 +25,7 @@ while ((Get-Date) -lt $deadline) {
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($command)
         $stream.Write($bytes, 0, $bytes.Length)
         Start-Sleep -Milliseconds 100
-        $command = '{"execute":"screendump","arguments":{"filename":"' + ($VmDir -replace '\\','/') + '/logs/finalize.ppm"}}' + "`r`n"
+        $command = '{"execute":"screendump","arguments":{"filename":"' + ($VmDir -replace '\\', '/') + '/logs/finalize.ppm"}}' + "`r`n"
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($command)
         $stream.Write($bytes, 0, $bytes.Length)
         Start-Sleep -Milliseconds 500
@@ -45,7 +45,8 @@ print('dark' if dark > im.width * im.height * 0.9 else 'ready')
             $ready = $true
             break
         }
-    } catch {
+    }
+    catch {
         # QMP or screenshot is not ready yet.
     }
     Start-Sleep -Seconds 5

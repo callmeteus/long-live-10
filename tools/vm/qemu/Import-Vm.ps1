@@ -32,7 +32,8 @@ Remove-Item $disk -Force -ErrorAction SilentlyContinue
 $ext = [System.IO.Path]::GetExtension($Image).ToLowerInvariant()
 if ($ext -eq ".qcow2") {
     Copy-Item $Image $disk -Force
-} else {
+}
+else {
     & $qemuImg convert -f auto -O qcow2 $Image $disk
     if ($LASTEXITCODE -ne 0) { throw "qemu-img convert failed (exit $LASTEXITCODE)." }
 }

@@ -47,7 +47,7 @@ exit
 $vhdScript | Out-File -FilePath "$env:TEMP\vb-createvhd.txt" -Encoding ASCII
 $cmd = "diskpart /s $env:TEMP\vb-createvhd.txt > C:\temp\vb-createvhdout.txt 2>&1"
 $cmd | Out-File -FilePath "$env:TEMP\vb-createvhd.cmd" -Encoding ASCII
-$proc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c","$env:TEMP\vb-createvhd.cmd" -Verb RunAs -Wait -PassThru
+$proc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "$env:TEMP\vb-createvhd.cmd" -Verb RunAs -Wait -PassThru
 if ($proc.ExitCode -ne 0) { throw "diskpart create VHD failed." }
 if (-not (Test-Path $vdiPath)) { throw "Failed to create VHD." }
 
@@ -67,7 +67,7 @@ exit
 $mountScript | Out-File -FilePath "$env:TEMP\vb-mount.txt" -Encoding ASCII
 $cmd = "diskpart /s $env:TEMP\vb-mount.txt > C:\temp\vb-mountout.txt 2>&1"
 $cmd | Out-File -FilePath "$env:TEMP\vb-mount.cmd" -Encoding ASCII
-$proc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c","$env:TEMP\vb-mount.cmd" -Verb RunAs -Wait -PassThru
+$proc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "$env:TEMP\vb-mount.cmd" -Verb RunAs -Wait -PassThru
 if ($proc.ExitCode -ne 0) { throw "diskpart mount failed." }
 
 # ---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ $detachScript = "select vdisk file=`"$vdiPath`"`ndetach vdisk`nexit"
 $detachScript | Out-File -FilePath "$env:TEMP\vb-detach.txt" -Encoding ASCII
 $cmd = "diskpart /s $env:TEMP\vb-detach.txt > C:\temp\vb-detachout.txt 2>&1"
 $cmd | Out-File -FilePath "$env:TEMP\vb-detach.cmd" -Encoding ASCII
-$proc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c","$env:TEMP\vb-detach.cmd" -Verb RunAs -Wait -PassThru
+$proc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "$env:TEMP\vb-detach.cmd" -Verb RunAs -Wait -PassThru
 if ($proc.ExitCode -ne 0) { throw "diskpart detach failed." }
 
 # ---------------------------------------------------------------------------

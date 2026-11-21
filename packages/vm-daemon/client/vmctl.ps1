@@ -36,7 +36,8 @@ function Invoke-Control {
         $writer.WriteLine($Line)
         if (-not $stream.DataAvailable) { Start-Sleep -Milliseconds 200 }
         return $reader.ReadLine()
-    } finally { $client.Close() }
+    }
+    finally { $client.Close() }
 }
 
 function Invoke-HttpGet {
@@ -44,7 +45,8 @@ function Invoke-HttpGet {
     try {
         $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 "http://$HostName`:$HttpPort/$Path"
         return $resp.Content
-    } catch { return "HTTP ERROR: $($_.Exception.Message)" }
+    }
+    catch { return "HTTP ERROR: $($_.Exception.Message)" }
 }
 
 if ($GetLog) { Write-Output (Invoke-HttpGet "log"); return }

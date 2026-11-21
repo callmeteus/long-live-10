@@ -1,4 +1,4 @@
-﻿# Setup-Vm.ps1 (VirtualBox) - Creates the Windows 10 VM and provisions the guest offline.
+# Setup-Vm.ps1 (VirtualBox) - Creates the Windows 10 VM and provisions the guest offline.
 #
 # The guest disk is always stored as VHD so that Prepare-Guest.ps1 can mount it on
 # the host and apply the "ready to use" configuration (WinRM auto-start, firewall,
@@ -127,7 +127,8 @@ if ($BaseImage -ne "") {
         & $vb modifyvm $VmName --natpf1 "winrm,tcp,,55985,,5985" --natpf1 "rdp,tcp,,53389,,3389"
         & $vb modifyvm $VmName --boot1 disk --boot2 dvd --boot3 none --boot4 none
         Convert-VmDiskToVhd -Name $VmName -Target $diskPath
-    } else {
+    }
+    else {
         & $vb createvm --name $VmName --ostype "Windows10_64" --register --basefolder $vmPath
         & $vb modifyvm $VmName --memory 4096 --cpus 4 --vram 128 --nic1 nat --nictype1 82540EM
         & $vb modifyvm $VmName --natpf1 "winrm,tcp,,55985,,5985" --natpf1 "rdp,tcp,,53389,,3389"
@@ -136,7 +137,8 @@ if ($BaseImage -ne "") {
 
         if ($ext -eq ".vhd") {
             Copy-Item $sourceImage $diskPath -Force
-        } else {
+        }
+        else {
             if (Test-Path $diskPath) { Remove-Item $diskPath -Force }
             & $vb clonemedium disk $sourceImage $diskPath --format VHD
             if ($LASTEXITCODE -ne 0) { throw "Failed to convert '$sourceImage' to VHD." }

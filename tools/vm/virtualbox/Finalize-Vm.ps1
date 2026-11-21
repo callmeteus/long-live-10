@@ -42,7 +42,8 @@ try {
         -Authentication Negotiate `
         -SessionOption (New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck) `
         -ScriptBlock { shutdown.exe /s /t 0 } -ErrorAction SilentlyContinue
-} catch { }
+}
+catch { }
 
 $deadline = (Get-Date).AddMinutes(3)
 while ((Get-Date) -lt $deadline) {

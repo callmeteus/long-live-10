@@ -107,13 +107,13 @@ function Invoke-Native {
         # argument containing whitespace (e.g. "...\Windows NT\CurrentVersion")
         # must be quoted explicitly.
         $commandLine = ($Arguments | ForEach-Object {
-            if ($_ -match '\s') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
-        }) -join ' '
+                if ($_ -match '\s') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+            }) -join ' '
 
         $proc = Start-Process -FilePath $FilePath -ArgumentList $commandLine -Wait -PassThru `
             -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
         $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) +
-                (Get-Content $stderr -Raw -ErrorAction SilentlyContinue)
+        (Get-Content $stderr -Raw -ErrorAction SilentlyContinue)
         return [pscustomobject]@{
             ExitCode = $proc.ExitCode
             Output   = ($text | Out-String).Trim()
@@ -364,7 +364,8 @@ finally {
             try {
                 Dismount-DiskImage -ImagePath $DiskPath -ErrorAction Stop | Out-Null
                 break
-            } catch {
+            }
+            catch {
                 Start-Sleep -Seconds 2
             }
         }

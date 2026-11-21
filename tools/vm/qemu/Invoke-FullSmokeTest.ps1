@@ -32,6 +32,7 @@ try {
         Remove-Item C:\ll10-smoke -Force
         Write-Output "smoke-ready"
     } -ArgumentList $AgentPath, $CatalogPath
-} finally {
+}
+finally {
     Remove-PSSession $session
 }

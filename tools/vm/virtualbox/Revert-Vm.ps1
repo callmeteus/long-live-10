@@ -38,14 +38,14 @@ function Invoke-VBox {
     $stderr = [System.IO.Path]::GetTempFileName()
     try {
         $commandLine = ($Arguments | ForEach-Object {
-            if ($_ -match '\s') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
-        }) -join ' '
+                if ($_ -match '\s') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+            }) -join ' '
 
         $proc = Start-Process -FilePath $vb -ArgumentList $commandLine -Wait -PassThru `
             -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 
         $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) +
-                (Get-Content $stderr -Raw -ErrorAction SilentlyContinue)
+        (Get-Content $stderr -Raw -ErrorAction SilentlyContinue)
         return [pscustomobject]@{
             ExitCode = $proc.ExitCode
             Output   = ($text | Out-String).Trim()
@@ -95,7 +95,7 @@ if ($null -eq (Get-VmState)) {
 # ---------------------------------------------------------------------------
 $snapshotList = Invoke-VBox -Arguments @("snapshot", $VmName, "list")
 $hasSnapshot = $snapshotList.ExitCode -eq 0 -and
-    $snapshotList.Output -match "Name:\s+$([regex]::Escape($Snapshot))\b"
+$snapshotList.Output -match "Name:\s+$([regex]::Escape($Snapshot))\b"
 
 $rebuildImage = $null
 if (-not $hasSnapshot) {

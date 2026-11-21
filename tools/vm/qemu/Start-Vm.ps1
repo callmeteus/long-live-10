@@ -13,10 +13,12 @@ $vhdDisk = Join-Path $VmDir "vm\ll10-22h2.vhd"
 if (Test-Path $qcow2Disk) {
     $disk = $qcow2Disk
     $diskFormat = "qcow2"
-} elseif (Test-Path $vhdDisk) {
+}
+elseif (Test-Path $vhdDisk) {
     $disk = $vhdDisk
     $diskFormat = "vpc"
-} else {
+}
+else {
     $disk = $qcow2Disk
     $diskFormat = "qcow2"
 }
@@ -83,7 +85,8 @@ if ($BootMode -eq "install") {
             $stream.Write($bytes, 0, $bytes.Length)
             Start-Sleep -Milliseconds 100
             $client.Close()
-        } catch {
+        }
+        catch {
             # QMP may not be ready yet.
         }
         Start-Sleep -Seconds 1

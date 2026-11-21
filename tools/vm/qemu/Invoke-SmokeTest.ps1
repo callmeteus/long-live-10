@@ -27,7 +27,8 @@ while ((Get-Date) -lt $deadline) {
         $session = New-PSSession -ComputerName $HostName -Port $Port -Credential $credential `
             -Authentication Negotiate -SessionOption $sessionOption -ErrorAction Stop
         break
-    } catch {
+    }
+    catch {
         $lastError = $_
         Start-Sleep -Seconds 5
     }
@@ -43,6 +44,7 @@ try {
         (Get-CimInstance Win32_OperatingSystem).Caption
     }
     $result
-} finally {
+}
+finally {
     Remove-PSSession $session
 }

@@ -1,4 +1,4 @@
-﻿# Start-Vm.ps1 (VirtualBox) - Starts the VM and waits until it is actually usable.
+# Start-Vm.ps1 (VirtualBox) - Starts the VM and waits until it is actually usable.
 #
 # Design notes (why this looks the way it does):
 #
@@ -54,14 +54,14 @@ function Invoke-VBox {
     $stderr = [System.IO.Path]::GetTempFileName()
     try {
         $commandLine = ($Arguments | ForEach-Object {
-            if ($_ -match '\s') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
-        }) -join ' '
+                if ($_ -match '\s') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+            }) -join ' '
 
         $proc = Start-Process -FilePath $vb -ArgumentList $commandLine -Wait -PassThru `
             -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 
         $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) +
-                (Get-Content $stderr -Raw -ErrorAction SilentlyContinue)
+        (Get-Content $stderr -Raw -ErrorAction SilentlyContinue)
         return [pscustomobject]@{
             ExitCode = $proc.ExitCode
             Output   = ($text | Out-String).Trim()
@@ -96,7 +96,8 @@ function Test-WinRmHandshake {
     try {
         $null = Test-WSMan -ComputerName "127.0.0.1" -Port $WinRmPort -ErrorAction Stop
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -116,7 +117,8 @@ function Test-WinRmLogin {
             Remove-PSSession $session -ErrorAction SilentlyContinue
         }
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -144,7 +146,8 @@ $startedAt = $null
 
 if ($state -in @("running")) {
     Write-Host "VM '$VmName' is already running."
-} else {
+}
+else {
     if ($state -in @("saved")) {
         Write-Host "Discarding saved state of '$VmName'..."
         Invoke-VBox -Arguments @("discardstate", $VmName) | Out-Null
@@ -188,7 +191,8 @@ while ((Get-Date) -lt $deadline) {
         $elapsed = if ($startedAt) { [int]((Get-Date) - $startedAt).TotalSeconds } else { 0 }
         if ($elapsed -gt 0) {
             Write-Host "WinRM login OK after ${elapsed}s." -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "WinRM login OK." -ForegroundColor Green
         }
         return

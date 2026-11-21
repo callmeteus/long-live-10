@@ -32,7 +32,8 @@ try {
     $stream.Write($bytes, 0, $bytes.Length)
     Start-Sleep -Seconds 2
     $client.Close()
-} catch {
+}
+catch {
     # The VM is probably already stopped.
 }
 

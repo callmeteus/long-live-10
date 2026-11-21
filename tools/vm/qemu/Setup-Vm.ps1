@@ -36,7 +36,8 @@ if ($BaseImage -ne "") {
     if ($ext -eq ".qcow2") {
         # Same format: just copy.
         Copy-Item $BaseImage $disk -Force
-    } else {
+    }
+    else {
         # VHD / VHDX / raw / etc.: convert with qemu-img.
         & $qemuImg convert -f auto -O qcow2 $BaseImage $disk
         if ($LASTEXITCODE -ne 0) { throw "qemu-img convert failed (exit $LASTEXITCODE)." }
