@@ -18,6 +18,10 @@ pub trait SystemBackend: Send + Sync {
     fn registry_get(&self, hive: &str, key: &str, name: &str) -> Result<String>;
     fn registry_set(&self, hive: &str, key: &str, name: &str, reg_type: &str, data: &serde_json::Value) -> Result<()>;
     fn registry_delete(&self, hive: &str, key: &str, name: &str) -> Result<()>;
+    /// True when an AppX package is registered for the current user.
+    fn appx_package_registered(&self, package_family_name: &str) -> Result<bool>;
+    /// Re-registers an AppX package from its manifest (Add-AppxPackage -Register).
+    fn reregister_appx(&self, manifest_path: &str) -> Result<()>;
     fn journal_path(&self, patch_id: &str) -> PathBuf;
     fn arm_auto_remediate(
         &self,
@@ -135,6 +139,18 @@ impl SystemBackend for MemoryBackend {
         let mut registry = self.registry.lock().unwrap();
         let k = format!("{}\\{}", key, name);
         registry.remove(&k);
+        Ok(())
+    }
+    fn appx_package_registered(&self, _package_family_name: &str) -> Result<bool> {
+        // Test double: registration state is tracked in the registry map under
+        // a synthetic key so drift tests can toggle it.
+        Ok(self.registry.lock().unwrap().contains_key("appx\\registered"))
+    }
+    fn reregister_appx(&self, _manifest_path: &str) -> Result<()> {
+        self.registry
+            .lock()
+            .unwrap()
+            .insert("appx\\registered".to_string(), "1".to_string());
         Ok(())
     }
     fn journal_path(&self, patch_id: &str) -> PathBuf {

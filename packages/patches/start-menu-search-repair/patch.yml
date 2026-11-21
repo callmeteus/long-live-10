@@ -1,0 +1,31 @@
+schema: 1
+id: start-menu-search-repair
+title: Start menu search dead on typing (Windows Search AppX registration)
+severity: medium
+target: guest
+requires:
+  admin: true
+  reboot: false
+docs:
+  readme: README.md
+  recovery: RECOVERY.md
+applies_to:
+  os: windows
+  arch:
+    - x86_64
+  builds: ">=19045.0 <19046.0"
+# The stock binary is correct: the failure is a degraded AppX registration of
+# Microsoft.Windows.Search (TWinUI event 5961, ErrorCode 0x80073D07). No file is
+# replaced; the declared operation re-registers the package from its manifest.
+checks:
+  - type: appx_package_registration
+    id: search-appx-registered
+    package_family_name: Microsoft.Windows.Search
+    expect_registered: true
+operations:
+  - type: re_register_appx
+    id: repair-search-appx
+    package_family_name: Microsoft.Windows.Search
+    manifest_path: C:\Windows\SystemApps\Microsoft.Windows.Search_cw5n1h2txyewy\AppxManifest.xml
+revert:
+  after_journal: []

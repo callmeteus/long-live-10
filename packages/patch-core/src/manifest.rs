@@ -74,6 +74,12 @@ pub enum Operation {
     BackupRegistry { id: String, values: Vec<RegistryRef> },
     SetRegistry { id: String, hive: String, key: String, name: String, reg_type: String, data: serde_json::Value },
     RemoveRegistryValue { id: String, hive: String, key: String, name: String },
+    /// Re-registers a packaged app from its AppxManifest.xml. Used to repair a
+    /// degraded AppX registration (e.g. the Windows Search package whose
+    /// CortanaUI activation fails with 0x80073D07). The backend calls
+    /// `Add-AppxPackage -Register` with the declared manifest; no arbitrary
+    /// script is taken from the manifest.
+    ReRegisterAppx { id: String, package_family_name: String, manifest_path: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -125,6 +131,10 @@ pub struct RemoveRegistryValueOp {
 pub enum Check {
     FileSha256 { id: String, path: String, equals: String },
     RegistryValue { id: String, hive: String, key: String, name: String, reg_type: String, data: serde_json::Value },
+    /// True when the given packaged app is registered for the current user.
+    /// A degraded registration is the root cause of some Start-menu search
+    /// failures (TWinUI event 5961, ErrorCode 0x80073D07).
+    AppxPackageRegistration { id: String, package_family_name: String, expect_registered: bool },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

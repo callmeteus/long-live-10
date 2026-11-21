@@ -153,7 +153,6 @@ impl<B: SystemBackend> PatchRuntime<B> {
 
         // Run checks
         let mut all_pass = true;
-        let mut any_fail = false;
         for check in &manifest.checks {
             match check {
                 patch_core::Check::FileSha256 { path, equals, .. } => {
@@ -166,7 +165,7 @@ impl<B: SystemBackend> PatchRuntime<B> {
                     match self.backend.file_hash(path) {
                         Ok(hash) if expected.contains(&hash.to_lowercase()) => {}
                         Ok(_) => { all_pass = false; }
-                        Err(_) => { all_pass = false; any_fail = true; }
+                        Err(_) => { all_pass = false; }
                     }
                 }
                 patch_core::Check::RegistryValue { hive, key, name, reg_type, data, .. } => {
@@ -179,6 +178,13 @@ impl<B: SystemBackend> PatchRuntime<B> {
                     };
                     match val {
                         Ok(v) if v == expected => {}
+                        Ok(_) => { all_pass = false; }
+                        Err(_) => { all_pass = false; }
+                    }
+                }
+                patch_core::Check::AppxPackageRegistration { package_family_name, expect_registered, .. } => {
+                    match self.backend.appx_package_registered(package_family_name) {
+                        Ok(registered) if registered == *expect_registered => {}
                         Ok(_) => { all_pass = false; }
                         Err(_) => { all_pass = false; }
                     }
@@ -412,6 +418,18 @@ impl<B: SystemBackend> PatchRuntime<B> {
                 patch_core::Operation::RemoveRegistryValue { id: op_id, hive, key, name } => {
                     self.backend.registry_delete(hive, key, name)?;
                     journal.add_registry_change(op_id.clone(), hive.clone(), key.clone(), name.clone());
+                }
+                patch_core::Operation::ReRegisterAppx { id: op_id, package_family_name, manifest_path } => {
+                    // Only re-register when it is actually needed: this is a
+                    // repair, and re-registering a healthy package is pointless.
+                    let healthy = self
+                        .backend
+                        .appx_package_registered(package_family_name)
+                        .unwrap_or(false);
+                    if !healthy {
+                        self.backend.reregister_appx(manifest_path)?;
+                        journal.add_change(op_id.clone(), manifest_path.clone());
+                    }
                 }
             }
         }

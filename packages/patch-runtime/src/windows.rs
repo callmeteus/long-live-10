@@ -176,6 +176,35 @@ impl super::SystemBackend for WindowsBackend {
         Ok(())
     }
 
+    fn appx_package_registered(&self, package_family_name: &str) -> Result<bool> {
+        // A degraded AppX registration is what makes CortanaUI activation fail
+        // with 0x80073D07 (TWinUI event 5961). `Get-AppxPackage -User` returns
+        // PackageUserInformation only when the package is registered for the
+        // current user, so that is our detection signal.
+        let ps = format!(
+            "$p = Get-AppxPackage -Name '{p}' -ErrorAction SilentlyContinue; \
+             if ($null -eq $p) {{ 'NO' }} \
+             elseif (@($p.PackageUserInformation).Count -eq 0) {{ 'NO' }} \
+             else {{ 'YES' }}",
+            p = package_family_name.replace('\'', "''")
+        );
+        let out = run_powershell_output(&ps)?;
+        Ok(out.trim().eq_ignore_ascii_case("YES"))
+    }
+
+    fn reregister_appx(&self, manifest_path: &str) -> Result<()> {
+        // `Add-AppxPackage -Register` is the documented repair for a degraded
+        // package registration (KB4520146). No script text comes from the
+        // manifest: the manifest only declares which trusted operation to run.
+        let ps = format!(
+            "$m = '{m}'; \
+             if (-not (Test-Path -LiteralPath $m)) {{ throw \"manifest not found: $m\" }}; \
+             Add-AppxPackage -Path $m -DisableDevelopmentMode -Register -ErrorAction Stop | Out-Null",
+            m = manifest_path.replace('\'', "''")
+        );
+        run_powershell(&ps)
+    }
+
     fn journal_path(&self, patch_id: &str) -> PathBuf {
         self.journal_dir.join(patch_id).join("journal.json")
     }
@@ -344,6 +373,26 @@ fn replace_in_use(source: &str, dest: &str) -> Result<()> {
 #[cfg(windows)]
 fn ps_quote(value: &str) -> String {
     value.replace('\'', "''")
+}
+
+#[cfg(windows)]
+fn run_powershell_output(script: &str) -> Result<String> {
+    let output = std::process::Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ])
+        .output()
+        .map_err(|e| anyhow::anyhow!("failed to start PowerShell: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("PowerShell query failed: {}", stderr.trim());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 #[cfg(windows)]
