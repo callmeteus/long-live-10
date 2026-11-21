@@ -91,7 +91,7 @@ fn installed_patches() -> Vec<String> {
 /// Describes catalog coverage for the detected Windows build.
 fn catalog_state(windows: Option<&WindowsVersion>) -> String {
     match windows {
-        Some(version) if version.build == "19045" => {
+        Some(version) if version.build == patch_core::SUPPORTED_BASELINE_BUILD => {
             "supported baseline: Windows 10 22H2 x64".to_string()
         }
         Some(_) => "build not in the supported catalog".to_string(),

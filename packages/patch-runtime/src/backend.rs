@@ -49,7 +49,7 @@ impl MemoryBackend {
     pub fn new() -> Self {
         Self {
             admin: true,
-            build: "19045".to_string(),
+            build: patch_core::SUPPORTED_BASELINE_BUILD.to_string(),
             arch: "x86_64".to_string(),
             journal_dir: std::env::temp_dir().join("ll10-journal"),
             ..Default::default()

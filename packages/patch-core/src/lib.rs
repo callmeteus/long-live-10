@@ -7,6 +7,13 @@ pub mod manifest;
 
 pub use manifest::*;
 
+/// The single Windows 10 build this catalogue supports as its baseline.
+///
+/// All production decisions about the supported baseline read this constant;
+/// fixture literals in tests stay untouched because they describe concrete
+/// scenarios rather than the fact itself.
+pub const SUPPORTED_BASELINE_BUILD: &str = "19045";
+
 /// Permitted operation types for the patch engine.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
