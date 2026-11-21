@@ -121,8 +121,9 @@ impl super::SystemBackend for WindowsBackend {
     }
 
     fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> {
-        // Remove from PendingFileRenameOperations
-        // This is complex; for now, just log
+        // Intentionally empty. `schedule_rename` installs the file immediately,
+        // so no PendingFileRenameOperations entry exists to remove. Reverting a
+        // file goes through `restore_file` (field notes section 4.4).
         Ok(())
     }
 
@@ -192,7 +193,7 @@ impl super::SystemBackend for WindowsBackend {
         Ok(out.trim().eq_ignore_ascii_case("YES"))
     }
 
-    fn reregister_appx(&self, manifest_path: &str) -> Result<()> {
+    fn reregister_appx(&self, manifest_path: &str, _package_family_name: &str) -> Result<()> {
         // `Add-AppxPackage -Register` is the documented repair for a degraded
         // package registration (KB4520146). No script text comes from the
         // manifest: the manifest only declares which trusted operation to run.

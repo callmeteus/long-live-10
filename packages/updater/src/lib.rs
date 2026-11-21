@@ -81,7 +81,7 @@ impl ReleaseArtifact {
             return Err(ManifestError::EmptyArtifact);
         }
 
-        if !self.url.starts_with("https://") {
+        if !catalog_schema::validation::is_https_url(&self.url) {
             return Err(ManifestError::InsecureUrl {
                 value: self.url.clone(),
             });
@@ -479,7 +479,7 @@ pub struct HttpTransport;
 
 impl ManifestTransport for HttpTransport {
     fn fetch(&self, url: &str) -> Result<Vec<u8>, ManifestError> {
-        if !url.starts_with("https://") {
+        if !catalog_schema::validation::is_https_url(url) {
             return Err(ManifestError::InsecureUrl {
                 value: url.to_string(),
             });

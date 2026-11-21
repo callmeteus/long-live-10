@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { affectedChecks, withDependents } from "./affected.mjs";
+import { affectedChecks, RustPackages, withDependents } from "./affected.mjs";
 
 test("a package change also selects its dependents", () => {
     assert.deepEqual(withDependents("catalog-schema"), [
@@ -11,6 +11,8 @@ test("a package change also selects its dependents", () => {
         "compatibility-catalog",
         "compatibility-engine",
         "patch-core",
+        "patch-helper",
+        "patch-runtime",
         "release-tools",
         "ui-contract",
         "updater",
@@ -34,7 +36,7 @@ test("a UI-only change runs only Flutter checks", () => {
 test("a UI contract change runs Rust and Flutter checks", () => {
     const checks = affectedChecks(["packages/ui-contract/src/lib.rs"]);
 
-    assert.deepEqual(checks.rust, ["agent", "agent-ffi", "ui-contract"]);
+    assert.deepEqual(checks.rust, ["agent", "agent-ffi", "patch-helper", "ui-contract"]);
     assert.equal(checks.ui, true);
 });
 
@@ -64,7 +66,7 @@ test("a patch-core change requests VM tests", () => {
 test("workspace manifest changes run every Rust package", () => {
     const checks = affectedChecks(["Cargo.toml"]);
 
-    assert.equal(checks.rust.length, 10);
+    assert.equal(checks.rust.length, RustPackages.length);
     assert.equal(checks.ui, true);
     assert.equal(checks.vm, true);
 });
@@ -73,10 +75,23 @@ test("workflow changes validate the full pipeline", () => {
     const checks = affectedChecks([".github/workflows/ci.yml"]);
 
     assert.equal(checks.ci, true);
-    assert.equal(checks.rust.length, 10);
+    assert.equal(checks.rust.length, RustPackages.length);
     assert.equal(checks.ui, true);
     assert.equal(checks.catalog, true);
     assert.equal(checks.vm, true);
+});
+
+test("the package graph comes from Cargo, not a stale list", () => {
+    // patch-helper and patch-runtime exist in Cargo.toml but were missing from
+    // the old hand-maintained list. Deriving from `cargo metadata` keeps them.
+    assert.ok(RustPackages.includes("patch-helper"));
+    assert.ok(RustPackages.includes("patch-runtime"));
+    assert.deepEqual(withDependents("patch-runtime"), [
+        "agent",
+        "agent-ffi",
+        "patch-helper",
+        "patch-runtime",
+    ]);
 });
 
 test("documentation changes run nothing", () => {

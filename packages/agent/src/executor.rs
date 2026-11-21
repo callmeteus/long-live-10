@@ -51,12 +51,14 @@ impl Journal {
     /// Reads a journal from a journal directory.
     pub fn read(journal_dir: &Path) -> Result<Self, ExecutorError> {
         let path = journal_dir.join(JOURNAL_FILE);
-        let text = fs::read_to_string(&path).map_err(|source| ExecutorError::ReadJournal {
-            path: path.clone(),
-            source,
-        })?;
 
-        let journal: Journal = serde_json::from_str(&text)?;
+        // Delegate the JSON mechanics to the shared helper, but keep this
+        // CLI's own error variants and version check (protected surface).
+        let journal: Journal =
+            patch_core::journal_io::read(&path).map_err(|source| ExecutorError::ReadJournal {
+                path: path.clone(),
+                source: io::Error::other(source.to_string()),
+            })?;
 
         if journal.version != JOURNAL_VERSION {
             return Err(ExecutorError::UnsupportedJournal {
@@ -70,11 +72,12 @@ impl Journal {
     /// Writes the journal into a journal directory.
     pub fn write(&self, journal_dir: &Path) -> Result<(), ExecutorError> {
         let path = journal_dir.join(JOURNAL_FILE);
-        let bytes = serde_json::to_vec_pretty(self)?;
-
-        fs::write(&path, bytes).map_err(|source| ExecutorError::WriteJournal { path, source })?;
-
-        Ok(())
+        patch_core::journal_io::write(&path, self).map_err(|source| {
+            ExecutorError::WriteJournal {
+                path: path.clone(),
+                source: io::Error::other(source.to_string()),
+            }
+        })
     }
 }
 

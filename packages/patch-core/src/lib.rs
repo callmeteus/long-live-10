@@ -3,9 +3,17 @@ use catalog_schema::{Architecture, Artifact, PatchEntry, Validate};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+pub mod journal_io;
 pub mod manifest;
 
 pub use manifest::*;
+
+/// The single Windows 10 build this catalogue supports as its baseline.
+///
+/// All production decisions about the supported baseline read this constant;
+/// fixture literals in tests stay untouched because they describe concrete
+/// scenarios rather than the fact itself.
+pub const SUPPORTED_BASELINE_BUILD: &str = "19045";
 
 /// Permitted operation types for the patch engine.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -440,20 +448,6 @@ impl PatchEngine {
         Applicability::Applicable
     }
 
-    /// Legacy applicability check by patch identifier.
-    pub fn check_applicability(&self, _patch_id: &str) -> Result<bool> {
-        Ok(false)
-    }
-
-    /// Plans an apply operation for the given patch identifier.
-    pub fn apply(&self, _patch_id: &str) -> Result<()> {
-        Ok(())
-    }
-
-    /// Plans a rollback operation for the given patch identifier.
-    pub fn rollback(&self, _patch_id: &str) -> Result<()> {
-        Ok(())
-    }
 }
 
 impl Default for PatchEngine {
@@ -468,7 +462,7 @@ fn matches_architecture(architectures: &[String], architecture: Architecture) ->
 
         matches!(
             (normalized.as_str(), architecture),
-            ("x64" | "amd64", Architecture::X64)
+            ("x64" | "amd64" | "x86_64", Architecture::X64)
                 | ("x86" | "i386" | "i686", Architecture::X86)
                 | ("arm64" | "aarch64", Architecture::Arm64)
         )
@@ -580,4 +574,71 @@ fn compare_version_tokens(left: &[u64], right: &[u64]) -> i32 {
     }
 
     0
+}
+
+/// Checks a declarative patch manifest against a guest build and architecture.
+///
+/// This is the single applicability decision used by the patch runtime. It
+/// reuses `matches_build` and `matches_architecture`, the same helpers the
+/// planner uses for catalog entries, so the executing engine and the planner
+/// cannot disagree about whether a build is supported.
+pub fn manifest_applicable(
+    manifest: &PatchManifest,
+    build: u32,
+    ubr: Option<u32>,
+    architecture: &str,
+) -> bool {
+    let state = GuestState {
+        build,
+        ubr,
+        architecture: match architecture.to_ascii_lowercase().as_str() {
+            "x86_64" | "x64" | "amd64" => Architecture::X64,
+            "x86" | "i386" | "i686" => Architecture::X86,
+            "arm64" | "aarch64" => Architecture::Arm64,
+            _ => return false,
+        },
+        components: HashMap::new(),
+        applied_patches: HashSet::new(),
+    };
+
+    let tokens: Vec<&str> = manifest.applies_to.builds.split_whitespace().collect();
+    let architectures: Vec<String> = manifest
+        .applies_to
+        .arch
+        .iter()
+        .map(|a| format!("{a:?}").to_ascii_lowercase())
+        .collect();
+
+    if !architectures.is_empty() && !matches_architecture(&architectures, state.architecture) {
+        return false;
+    }
+
+    // Support explicit ranges like ">=19045.0 <19046.0" alongside the exact
+    // build strings understood by `matches_build`. This is the format used by
+    // the existing patch manifests, so the engine must keep accepting it.
+    let mut min: Option<u32> = None;
+    let mut max: Option<u32> = None;
+    for token in &tokens {
+        if let Some(rest) = token.strip_prefix(">=") {
+            min = rest.split('.').next().and_then(|s| s.parse().ok());
+        } else if let Some(rest) = token.strip_prefix('<') {
+            max = rest.split('.').next().and_then(|s| s.parse().ok());
+        }
+    }
+    if min.is_some() || max.is_some() {
+        if let Some(m) = min {
+            if build < m {
+                return false;
+            }
+        }
+        if let Some(m) = max {
+            if build >= m {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    let builds: Vec<String> = tokens.iter().map(|s| s.to_string()).collect();
+    matches_build(&builds, &state)
 }

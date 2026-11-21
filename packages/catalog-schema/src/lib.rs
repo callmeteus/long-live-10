@@ -1,6 +1,8 @@
 ﻿use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod validation;
+
 /// Major schema version supported by this crate.
 pub const CURRENT_SCHEMA_MAJOR: u32 = 1;
 
@@ -174,7 +176,7 @@ impl Validate for Artifact {
         }
 
         if let Some(url) = &self.source_url {
-            if !url.starts_with("https://") {
+            if !validation::is_https_url(url) {
                 return Err(SchemaError::InsecureSource { value: url.clone() });
             }
         }
@@ -400,7 +402,7 @@ pub enum SchemaError {
 
 /// Verifies that a required string field is not blank.
 fn require_text(value: &str, field: &'static str) -> Result<(), SchemaError> {
-    if value.trim().is_empty() {
+    if !validation::is_nonblank(value) {
         return Err(SchemaError::EmptyField { field });
     }
 
@@ -438,5 +440,5 @@ fn is_cve(value: &str) -> bool {
 
 /// Checks for a 64 character hexadecimal digest.
 fn is_sha256(value: &str) -> bool {
-    value.len() == 64 && value.chars().all(|character| character.is_ascii_hexdigit())
+    validation::is_sha256(value)
 }

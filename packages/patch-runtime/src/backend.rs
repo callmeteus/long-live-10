@@ -13,7 +13,15 @@ pub trait SystemBackend: Send + Sync {
     fn stage_file(&self, source: &Path, dest: &str) -> Result<()>;
     fn replace_file(&self, source: &str, dest: &str) -> Result<()>;
     fn restore_file(&self, backup: &str, dest: &str) -> Result<()>;
+    /// Applies a file from `source` to `dest`.
+    ///
+    /// Despite the historical name, this installs the file immediately: a
+    /// deferred `MoveFileEx(DELAY_UNTIL_REBOOT)` needs a write the protection
+    /// filter denies (field notes section 2), so it was never effective.
     fn schedule_rename(&self, source: &str, dest: &str) -> Result<()>;
+    /// No-op by design: `schedule_rename` already installed the file, so there
+    /// is no `PendingFileRenameOperations` entry to remove on revert (field
+    /// notes section 4.4). Kept for the trait symmetry with older manifests.
     fn cancel_rename(&self, dest: &str, source: &str) -> Result<()>;
     fn registry_get(&self, hive: &str, key: &str, name: &str) -> Result<String>;
     fn registry_set(&self, hive: &str, key: &str, name: &str, reg_type: &str, data: &serde_json::Value) -> Result<()>;
@@ -21,7 +29,7 @@ pub trait SystemBackend: Send + Sync {
     /// True when an AppX package is registered for the current user.
     fn appx_package_registered(&self, package_family_name: &str) -> Result<bool>;
     /// Re-registers an AppX package from its manifest (Add-AppxPackage -Register).
-    fn reregister_appx(&self, manifest_path: &str) -> Result<()>;
+    fn reregister_appx(&self, manifest_path: &str, package_family_name: &str) -> Result<()>;
     fn journal_path(&self, patch_id: &str) -> PathBuf;
     fn arm_auto_remediate(
         &self,
@@ -38,6 +46,7 @@ pub trait SystemBackend: Send + Sync {
 pub struct MemoryBackend {
     pub files: std::sync::Mutex<HashMap<String, Vec<u8>>>,
     pub registry: std::sync::Mutex<HashMap<String, String>>,
+    pub appx_registered: std::sync::Mutex<std::collections::HashSet<String>>,
     pub admin: bool,
     pub build: String,
     pub arch: String,
@@ -48,7 +57,7 @@ impl MemoryBackend {
     pub fn new() -> Self {
         Self {
             admin: true,
-            build: "19045".to_string(),
+            build: patch_core::SUPPORTED_BASELINE_BUILD.to_string(),
             arch: "x86_64".to_string(),
             journal_dir: std::env::temp_dir().join("ll10-journal"),
             ..Default::default()
@@ -123,7 +132,10 @@ impl SystemBackend for MemoryBackend {
         // look like it worked while the target kept its patched content.
         self.replace_file(source, dest)
     }
-    fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> { Ok(()) }
+    fn cancel_rename(&self, _dest: &str, _source: &str) -> Result<()> {
+        // Mirrors SystemBackend: the rename was already applied immediately.
+        Ok(())
+    }
     fn registry_get(&self, _hive: &str, key: &str, name: &str) -> Result<String> {
         let registry = self.registry.lock().unwrap();
         let k = format!("{}\\{}", key, name);
@@ -141,16 +153,18 @@ impl SystemBackend for MemoryBackend {
         registry.remove(&k);
         Ok(())
     }
-    fn appx_package_registered(&self, _package_family_name: &str) -> Result<bool> {
-        // Test double: registration state is tracked in the registry map under
-        // a synthetic key so drift tests can toggle it.
-        Ok(self.registry.lock().unwrap().contains_key("appx\\registered"))
-    }
-    fn reregister_appx(&self, _manifest_path: &str) -> Result<()> {
-        self.registry
+    fn appx_package_registered(&self, package_family_name: &str) -> Result<bool> {
+        Ok(self
+            .appx_registered
             .lock()
             .unwrap()
-            .insert("appx\\registered".to_string(), "1".to_string());
+            .contains(package_family_name))
+    }
+    fn reregister_appx(&self, _manifest_path: &str, package_family_name: &str) -> Result<()> {
+        self.appx_registered
+            .lock()
+            .unwrap()
+            .insert(package_family_name.to_string());
         Ok(())
     }
     fn journal_path(&self, patch_id: &str) -> PathBuf {

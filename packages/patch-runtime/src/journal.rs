@@ -1,6 +1,5 @@
 ﻿use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,18 +55,11 @@ impl Journal {
     }
 
     pub fn read(path: &Path) -> Result<Self> {
-        let content = fs::read_to_string(path)?;
-        let journal: Journal = serde_json::from_str(&content)?;
-        Ok(journal)
+        patch_core::journal_io::read(path)
     }
 
     pub fn save(&self, path: &Path) -> Result<()> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        let content = serde_json::to_string_pretty(self)?;
-        fs::write(path, content)?;
-        Ok(())
+        patch_core::journal_io::write(path, self)
     }
 
     pub fn add_backup(&mut self, op_id: String, path: String, backup: String) {
@@ -104,8 +96,6 @@ impl Journal {
             previous_value: prev,
         });
     }
-
-    pub fn add_registry_change(&mut self, _op_id: String, _hive: String, _key: String, _name: String) {}
 
     pub fn add_pending(&mut self, _op_id: String, dest: String, source: String) {
         self.pending_reboot_entries.push((dest, source));

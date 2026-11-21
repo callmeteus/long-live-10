@@ -99,7 +99,7 @@ impl ReleaseCandidate {
         let version =
             Version::parse(&spec.version).context("release version is not valid semver")?;
 
-        if !spec.base_url.starts_with("https://") {
+        if !catalog_schema::validation::is_https_url(&spec.base_url) {
             bail!("base URL must use HTTPS");
         }
 
